@@ -7,7 +7,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.vehicle.StorageMinecartEntity;
+import net.minecraft.entity.vehicle.ChestMinecartEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class TunnelCartEntity extends StorageMinecartEntity {
+public class TunnelCartEntity extends ChestMinecartEntity {
     private static final TagKey<Block> C_ORES = TagKey.of(RegistryKeys.BLOCK, new Identifier("c", "ores"));
     private static final int FLAGS = Block.NOTIFY_LISTENERS;
 
@@ -49,7 +49,8 @@ public class TunnelCartEntity extends StorageMinecartEntity {
 
     public TunnelCartEntity(EntityType<? extends TunnelCartEntity> type, World world) { super(type, world); }
     public TunnelCartEntity(World world, double x, double y, double z) {
-        super(TunnelCartMod.TUNNEL_CART_ENTITY, x, y, z, world);
+        super(TunnelCartMod.TUNNEL_CART_ENTITY, world);
+        setPosition(x, y, z);
     }
 
     public void setup(BlockPos origin, Direction heading) { this.origin = origin.toImmutable(); this.heading = heading; this.built = 0; }
