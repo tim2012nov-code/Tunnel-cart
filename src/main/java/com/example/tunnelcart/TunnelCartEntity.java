@@ -4,6 +4,7 @@ import net.minecraft.block.*;
 import net.minecraft.block.enums.RailShape;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.vehicle.ChestMinecartEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
@@ -20,6 +21,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
 import net.minecraft.world.World;
 
 import java.util.List;
@@ -33,6 +36,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     private BlockPos origin = null;
     private Direction heading = Direction.NORTH;
     private int built = 0;
+    private boolean active = false;
     private String issue = null;
 
     public TunnelCartEntity(
@@ -51,11 +55,31 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         this.origin = origin.toImmutable();
         this.heading = heading;
         this.built = 0;
+        this.active = false;
+    }
+
+    @Override
+    public ActionResult interact(PlayerEntity player, Hand hand) {
+        if (player.isSneaking()) {
+            if (!getWorld().isClient) {
+                active = !active;
+                player.sendMessage(
+                        Text.translatable(active
+                                ? "tunnelcart.started"
+                                : "tunnelcart.stopped"),
+                        true
+                );
+            }
+            return ActionResult.success(getWorld().isClient);
+        }
+
+        return super.interact(player, hand);
     }
 
     @Override
     public void tick() {
         if (!getWorld().isClient
+                && active
                 && origin != null
                 && getWorld() instanceof ServerWorld sw) {
 
@@ -434,6 +458,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             nbt.putInt("OZ", origin.getZ());
             nbt.putString("Heading", heading.getName());
             nbt.putInt("Built", built);
+            nbt.putBoolean("Active", active);
         }
     }
 
@@ -452,6 +477,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
 
             heading = d != null ? d : Direction.NORTH;
             built = nbt.getInt("Built");
+            active = nbt.getBoolean("Active");
         }
     }
 }
