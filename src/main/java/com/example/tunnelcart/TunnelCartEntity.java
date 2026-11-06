@@ -114,10 +114,40 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             return false;
         }
 
-        BlockPos n = c.offset(heading);
+        // Mine and line the 5x5 tunnel shell. The central 3x3 remains open
+        // for the cart; deepslate itself is deliberately left untouched.
+        for (int a = -2; a <= 2; a++) {
+            for (int h = -1; h <= 3; h++) {
+                if (Math.abs(a) <= 1 && h >= 0 && h <= 2) continue;
 
-        if (w.isChunkLoaded(n)) {
-            for (int a = -1; a <= 1; a++) {
+                BlockPos p = c.offset(side, a).up(h);
+                if (w.isOutOfHeightLimit(p)) continue;
+
+                BlockState s = w.getBlockState(p);
+                if (s.isAir() || s.isOf(Blocks.DEEPSLATE)
+                        || s.isOf(Blocks.COBBLED_DEEPSLATE)) continue;
+
+                if (s.hasBlockEntity() || s.getHardness(w, p) < 0) {
+                    issue = "blocked";
+                    return false;
+                }
+
+                if (isWanted(s)) collect(w, p, s);
+
+                if (!take(Items.COBBLED_DEEPSLATE)) {
+                    issue = "need_cobbled";
+                    return false;
+                }
+
+                w.setBlockState(
+                        p,
+                        Blocks.COBBLED_DEEPSLATE.getDefaultState(),
+                        FLAGS
+                );
+            }
+        }
+
+        for (int a = -1; a <= 1; a++) {
                 for (int h = 0; h <= 2; h++) {
                     BlockPos p = n.offset(side, a).up(h);
 
@@ -217,29 +247,6 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 Block.NOTIFY_ALL
         );
 
-        for (int a = -3; a <= 3; a++) {
-            for (int h = -2; h <= 4; h++) {
-                if (Math.abs(a) <= 2 && h >= -1 && h <= 3) continue;
-
-                BlockPos p = c.offset(side, a).up(h);
-
-                if (w.isOutOfHeightLimit(p)) continue;
-
-                BlockState s = w.getBlockState(p);
-
-                if (!isWanted(s) || s.hasBlockEntity()) continue;
-                if (!take(Items.COBBLED_DEEPSLATE)) continue;
-
-                collect(w, p, s);
-
-                w.setBlockState(
-                        p,
-                        Blocks.COBBLED_DEEPSLATE.getDefaultState(),
-                        FLAGS
-                );
-            }
-        }
-
         return true;
     }
 
@@ -297,6 +304,15 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     }
 
     private void insert(ItemStack s) {
+        if (s.isEmpty()) return;
+
+        // Only ore drops/ore blocks and cobbled deepslate belong in the cart.
+        // Everything else is dropped at the mining site.
+        if (!isAllowedStoredItem(s)) {
+            dropStack(s);
+            return;
+        }
+
         for (int i = 0; i < size() && !s.isEmpty(); i++) {
             ItemStack t = getStack(i);
 
@@ -320,14 +336,42 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             }
         }
 
-        if (s.isEmpty()) return;
+        if (!s.isEmpty()) dropStack(s);
+    }
 
-        Item it = s.getItem();
+    private static boolean isAllowedStoredItem(ItemStack stack) {
+        Item item = stack.getItem();
 
-        boolean junk = it.getClass() == BlockItem.class
-                && it != Items.GRAVEL;
+        if (item == Items.COBBLED_DEEPSLATE
+                || item == Items.COAL
+                || item == Items.CHARCOAL
+                || item == Items.RAW_IRON
+                || item == Items.RAW_COPPER
+                || item == Items.RAW_GOLD
+                || item == Items.DIAMOND
+                || item == Items.EMERALD
+                || item == Items.LAPIS_LAZULI
+                || item == Items.REDSTONE
+                || item == Items.QUARTZ
+                || item == Items.ANCIENT_DEBRIS
+                || item == Items.NETHERITE_SCRAP) {
+            return true;
+        }
 
-        if (!junk) dropStack(s);
+        if (item instanceof BlockItem blockItem) {
+            BlockState state = blockItem.getBlock().getDefaultState();
+            return state.isIn(C_ORES)
+                    || state.isIn(BlockTags.COAL_ORES)
+                    || state.isIn(BlockTags.IRON_ORES)
+                    || state.isIn(BlockTags.COPPER_ORES)
+                    || state.isIn(BlockTags.GOLD_ORES)
+                    || state.isIn(BlockTags.DIAMOND_ORES)
+                    || state.isIn(BlockTags.EMERALD_ORES)
+                    || state.isIn(BlockTags.LAPIS_ORES)
+                    || state.isIn(BlockTags.REDSTONE_ORES);
+        }
+
+        return false;
     }
 
     private boolean take(Item item) {
