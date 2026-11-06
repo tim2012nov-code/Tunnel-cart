@@ -5,7 +5,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.vehicle.StorageMinecartEntity;
+import net.minecraft.entity.vehicle.ChestMinecartEntity;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.GenericContainerScreenHandler;
@@ -19,12 +19,13 @@ import net.minecraft.world.World;
 import java.util.UUID;
 
 /** Trailing cart: click = sit, sneak+click = storage (27 extra slots for the Tunnel Cart). */
-public class ExtensionCartEntity extends StorageMinecartEntity {
+public class ExtensionCartEntity extends ChestMinecartEntity {
     private UUID leader;
 
     public ExtensionCartEntity(EntityType<? extends ExtensionCartEntity> type, World world) { super(type, world); }
     public ExtensionCartEntity(World world, double x, double y, double z) {
-        super(TunnelCartMod.EXTENSION_CART_ENTITY, x, y, z, world);
+        super(TunnelCartMod.EXTENSION_CART_ENTITY, world);
+        setPosition(x, y, z);
     }
 
     public void setLeader(UUID id) { leader = id; }
