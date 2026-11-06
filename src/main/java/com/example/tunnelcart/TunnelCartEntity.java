@@ -111,7 +111,7 @@ public class TunnelCartEntity extends StorageMinecartEntity {
                 double speed = Math.max(0.0, Math.min(max, built - along - 1.0));
                 setVelocity(heading.getOffsetX() * speed, getVelocity().y, heading.getOffsetZ() * speed);
 
-                if (age % 10 == 0) flushJunk(sw);
+                if (age % 20 == 0) flushJunk(sw);
                 if (issue != null && speed < 0.05 && age % 40 == 0) {
                     Text msg = Text.translatable("tunnelcart." + issue);
                     for (var p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500)) p.sendMessage(msg, true);
@@ -210,7 +210,6 @@ public class TunnelCartEntity extends StorageMinecartEntity {
         for (ItemStack s : junk) {
             ItemEntity ie = new ItemEntity(w, getX(), getY() + 0.3, getZ(), s);
             ie.setVelocity(Vec3d.ZERO);
-            ie.setItemAge(5900); // despawns after ~10 s so the tunnel does not drown in junk
             w.spawnEntity(ie);
         }
         junk.clear();
@@ -219,7 +218,7 @@ public class TunnelCartEntity extends StorageMinecartEntity {
     private boolean take(Item item) { return CartInv.take(pool, item); }
 
     // ------------------------------------------------------------ minecart boilerplate
-    @Override protected Item getItem() { return TunnelCartMod.TUNNEL_CART_ITEM; }
+    public Item getItem() { return TunnelCartMod.TUNNEL_CART_ITEM; }
     @Override public int size() { return 27; }
     @Override public Type getMinecartType() { return Type.CHEST; }
     @Override public BlockState getDefaultContainedBlock() { return Blocks.BLAST_FURNACE.getDefaultState(); }
