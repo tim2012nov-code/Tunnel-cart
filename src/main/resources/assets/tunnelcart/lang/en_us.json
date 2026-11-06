@@ -1,8 +1,13 @@
 {
-  "item.tunnelcart.tunnel_cart": "Tunnel Cart",
-  "entity.tunnelcart.tunnel_cart": "Tunnel Cart",
-  "tunnelcart.need_rail": "Tunnel Cart: out of powered rails",
-  "tunnelcart.need_cobbled": "Tunnel Cart: out of cobbled deepslate",
-  "tunnelcart.blocked": "Tunnel Cart: unbreakable block ahead",
-  "tunnelcart.chunk": "Tunnel Cart: waiting for chunks to load"
+ "item.tunnelcart.tunnel_cart": "Tunnel Cart",
+ "entity.tunnelcart.tunnel_cart": "Tunnel Cart",
+ "item.tunnelcart.extension_cart": "Tunnel Cart Extension (seat + storage)",
+ "entity.tunnelcart.extension_cart": "Tunnel Cart Extension",
+ "tunnelcart.need_rail": "Tunnel Cart: out of powered rails",
+ "tunnelcart.need_cobbled": "Tunnel Cart: out of cobbled deepslate",
+ "tunnelcart.blocked": "Tunnel Cart: unbreakable block ahead",
+ "tunnelcart.chunk": "Tunnel Cart: waiting for chunks to load",
+ "tunnelcart.start": "Build path",
+ "tunnelcart.stop": "Stop",
+ "tunnelcart.no_leader": "Place it on a rail within 16 blocks of a Tunnel Cart"
 }

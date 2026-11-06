@@ -1,8 +1,13 @@
 {
-  "item.tunnelcart.tunnel_cart": "Вагонетка-проходчик",
-  "entity.tunnelcart.tunnel_cart": "Вагонетка-проходчик",
-  "tunnelcart.need_rail": "Вагонетка-проходчик: кончились энергорельсы",
-  "tunnelcart.need_cobbled": "Вагонетка-проходчик: кончился колотый глубинный сланец",
-  "tunnelcart.blocked": "Вагонетка-проходчик: впереди неразрушимый блок",
-  "tunnelcart.chunk": "Вагонетка-проходчик: ждёт загрузки чанков"
+ "item.tunnelcart.tunnel_cart": "Вагонетка-проходчик",
+ "entity.tunnelcart.tunnel_cart": "Вагонетка-проходчик",
+ "item.tunnelcart.extension_cart": "Расширение проходчика (сиденье + склад)",
+ "entity.tunnelcart.extension_cart": "Расширение проходчика",
+ "tunnelcart.need_rail": "Проходчик: кончились энергорельсы",
+ "tunnelcart.need_cobbled": "Проходчик: кончился колотый глубинный сланец",
+ "tunnelcart.blocked": "Проходчик: впереди неразрушимый блок",
+ "tunnelcart.chunk": "Проходчик: ждёт загрузки чанков",
+ "tunnelcart.start": "Проложить путь",
+ "tunnelcart.stop": "Стоп",
+ "tunnelcart.no_leader": "Поставь на рельс в радиусе 16 блоков от проходчика"
 }
