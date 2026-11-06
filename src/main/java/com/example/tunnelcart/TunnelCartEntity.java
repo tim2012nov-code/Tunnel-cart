@@ -178,7 +178,10 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             }
         }
 
-        for (int a = -1; a <= 1; a++) {
+        BlockPos n = c.offset(heading);
+
+        if (w.isChunkLoaded(n)) {
+            for (int a = -1; a <= 1; a++) {
                 for (int h = 0; h <= 2; h++) {
                     BlockPos p = n.offset(side, a).up(h);
 
