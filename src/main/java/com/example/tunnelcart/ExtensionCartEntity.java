@@ -57,7 +57,7 @@ public class ExtensionCartEntity extends StorageMinecartEntity {
         return ActionResult.success(w.isClient);
     }
 
-    @Override protected Item getItem() { return TunnelCartMod.EXTENSION_CART_ITEM; }
+    public Item getItem() { return TunnelCartMod.EXTENSION_CART_ITEM; }
     @Override public int size() { return 27; }
     @Override public Type getMinecartType() { return Type.CHEST; }
     @Override public BlockState getDefaultContainedBlock() { return Blocks.BARREL.getDefaultState(); }
