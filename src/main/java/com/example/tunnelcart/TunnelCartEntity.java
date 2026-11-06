@@ -73,6 +73,13 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             return ActionResult.success(getWorld().isClient);
         }
 
+        // Empty-hand interaction boards the driver's seat; holding an item
+        // keeps the chest-minecart inventory interaction available.
+        if (player.getStackInHand(hand).isEmpty() && getPassengerList().isEmpty()) {
+            if (!getWorld().isClient) player.startRiding(this);
+            return ActionResult.success(getWorld().isClient);
+        }
+
         return super.interact(player, hand);
     }
 
