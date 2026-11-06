@@ -4,5 +4,7 @@
   "tunnelcart.need_rail": "Tunnel Cart: out of powered rails",
   "tunnelcart.need_cobbled": "Tunnel Cart: out of cobbled deepslate",
   "tunnelcart.blocked": "Tunnel Cart: unbreakable block ahead",
-  "tunnelcart.chunk": "Tunnel Cart: waiting for chunks to load"
+  "tunnelcart.chunk": "Tunnel Cart: waiting for chunks to load",
+  "tunnelcart.started": "Tunnel Cart: tunnel construction started",
+  "tunnelcart.stopped": "Tunnel Cart: tunnel construction paused"
 }
