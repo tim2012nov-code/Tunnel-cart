@@ -3,7 +3,7 @@
   "id": "tunnelcart",
   "version": "${version}",
   "name": "Tunnel Cart",
-  "description": "Self-driving minecart that digs a 3x3 tunnel, lays powered rails and lines it with cobbled deepslate.",
+  "description": "Tunnel cart that can be manually started, carries the player, mines a 5x5 tunnel shell, lays powered rails and lines the tunnel with cobbled deepslate.",
   "environment": "*",
   "entrypoints": {
     "main": ["com.example.tunnelcart.TunnelCartMod"],
