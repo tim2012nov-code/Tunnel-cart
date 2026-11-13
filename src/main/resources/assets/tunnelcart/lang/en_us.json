@@ -23,5 +23,5 @@
  "tunnelcart.coord_busy": "Tunnel Cart: wait until the cart passes the turn, or re-place it",
  "tunnelcart.need_plain_rail": "Tunnel Cart: out of plain rails (needed for the turn)",
  "tunnelcart.need_brake": "Tunnel Cart: out of cobblestone (slowing blocks)",
- "tunnelcart.blocked_path": "Tunnel Cart: cannot bypass the existing track (above and below are occupied)"
+ "tunnelcart.blocked_path": "Tunnel Cart: cannot bypass the existing track (above and below are occupied). Rail at %s %s %s"
 }

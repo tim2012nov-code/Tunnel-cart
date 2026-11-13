@@ -58,3 +58,6 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 
 ### 4.0.2
 * Bypass is triggered only by powered rails (plain/other rails and everything behind the starting point are ignored).
+
+### 4.0.3
+* The "cannot bypass" message now shows the coordinates of the rail that triggered it.

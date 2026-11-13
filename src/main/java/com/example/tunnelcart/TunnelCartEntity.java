@@ -50,6 +50,8 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     private int tx, ty, tz;
     private UUID extUuid = null;
     private String issue = null;
+    private Object[] issueArgs = new Object[0];
+    private BlockPos foundRail = null;
     private Inventory pool = this;
     private final List<ItemStack> junk = new ArrayList<>();
 
@@ -132,6 +134,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 setVelocity(0, getVelocity().y, 0);
             } else {
                 issue = null;
+                issueArgs = new Object[0];
                 pool = poolNow();
                 double max = getMaxSpeed(); // includes High-Speed Rail override
                 Direction h0 = plan.heading();
@@ -176,7 +179,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
 
                 if (age % 20 == 0) flushJunk(sw);
                 if (issue != null && speed < 0.05 && age % 40 == 0) {
-                    Text msg = Text.translatable("tunnelcart." + issue);
+                    Text msg = Text.translatable("tunnelcart." + issue, issueArgs);
                     for (var p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500)) p.sendMessage(msg, true);
                 }
             }
@@ -207,6 +210,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             if (!planDetour(w, n, j, e, ys, y0)) {
                 scanned = j - 1;
                 issue = "blocked_path";
+                if (foundRail != null) issueArgs = new Object[]{foundRail.getX(), foundRail.getY(), foundRail.getZ()};
                 return false;
             }
             scanned = Math.max(scanned, plan.detours().get(plan.detours().size() - 1).end());
@@ -252,6 +256,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 if (!w.getBlockState(q).isOf(Blocks.POWERED_RAIL)) continue; // only powered rails trigger a bypass
                 if (isOwn(q, j)) continue;
                 out.add(y);
+                if (foundRail == null || out.size() == 1) foundRail = q;
             }
         }
         return out;
