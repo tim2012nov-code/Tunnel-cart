@@ -55,3 +55,6 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 * Slopes (and the rails next to them) now have 5 blocks of headroom.
 * Torches every 16 rails + three acceleration torches after a turn.
 * Speed is limited to 10 bps right before and on slopes (`SLOPE_SPEED` in `TunnelCartEntity`).
+
+### 4.0.2
+* Bypass is triggered only by powered rails (plain/other rails and everything behind the starting point are ignored).

@@ -249,7 +249,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             for (int y = yRef - 4; y <= yRef + 4; y++) {
                 BlockPos q = new BlockPos(x, y, z);
                 if (w.isOutOfHeightLimit(q)) continue;
-                if (!w.getBlockState(q).isIn(BlockTags.RAILS)) continue;
+                if (!w.getBlockState(q).isOf(Blocks.POWERED_RAIL)) continue; // only powered rails trigger a bypass
                 if (isOwn(q, j)) continue;
                 out.add(y);
             }

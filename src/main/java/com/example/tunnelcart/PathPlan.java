@@ -134,7 +134,7 @@ public final class PathPlan {
         int ax = q.getX() - origin.getX(), az = q.getZ() - origin.getZ();
         int along = ax * h0.getOffsetX() + az * h0.getOffsetZ();
         int lat = h0.getAxis() == Direction.Axis.X ? az : ax;
-        return lat == 0 && along <= 0;
+        return along <= 0; // everything behind the origin is never an obstacle
     }
 
     public Node node(int i) {
