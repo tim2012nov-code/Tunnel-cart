@@ -2,7 +2,9 @@ package com.example.tunnelcart;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.item.Item;
@@ -14,6 +16,7 @@ import net.minecraft.util.Identifier;
 
 public class TunnelCartMod implements ModInitializer {
     public static final String ID = "tunnelcart";
+    public static final Identifier COORD_PACKET = new Identifier(ID, "coords");
 
     public static final EntityType<TunnelCartEntity> TUNNEL_CART_ENTITY = Registry.register(
             Registries.ENTITY_TYPE, new Identifier(ID, "tunnel_cart"),
@@ -37,5 +40,15 @@ public class TunnelCartMod implements ModInitializer {
     @Override
     public void onInitialize() {
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(e -> { e.add(TUNNEL_CART_ITEM); e.add(EXTENSION_CART_ITEM); });
+        ServerPlayNetworking.registerGlobalReceiver(COORD_PACKET, (server, player, handler, buf, sender) -> {
+            int id = buf.readInt(), x = buf.readInt(), y = buf.readInt(), z = buf.readInt();
+            boolean hasY = buf.readBoolean();
+            server.execute(() -> {
+                Entity e = player.getServerWorld().getEntityById(id);
+                if (e instanceof TunnelCartEntity cart && cart.squaredDistanceTo(player) < 1024) {
+                    cart.startCoordinates(player, x, hasY ? Integer.valueOf(y) : null, z);
+                }
+            });
+        });
     }
 }

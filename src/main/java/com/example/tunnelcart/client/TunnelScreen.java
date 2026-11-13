@@ -11,6 +11,7 @@ import net.minecraft.util.Identifier;
 public class TunnelScreen extends HandledScreen<TunnelScreenHandler> {
     private static final Identifier TEX = new Identifier("textures/gui/container/generic_54.png");
     private ButtonWidget button;
+    private ButtonWidget torchButton;
 
     public TunnelScreen(TunnelScreenHandler h, PlayerInventory inv, Text title) {
         super(h, inv, title);
@@ -24,12 +25,21 @@ public class TunnelScreen extends HandledScreen<TunnelScreenHandler> {
         button = addDrawableChild(ButtonWidget.builder(Text.translatable("tunnelcart.start"),
                 b -> client.interactionManager.clickButton(handler.syncId, 0))
                 .dimensions(x + backgroundWidth - 84, y + 3, 78, 14).build());
+        torchButton = addDrawableChild(ButtonWidget.builder(Text.translatable("tunnelcart.torch_off"),
+                b -> client.interactionManager.clickButton(handler.syncId, 1))
+                .dimensions(x, y + backgroundHeight + 2, 86, 18).build());
+        addDrawableChild(ButtonWidget.builder(Text.translatable("tunnelcart.coords"), b -> {
+            int cartId = handler.getCartId();
+            client.player.closeHandledScreen();
+            client.setScreen(new CoordsScreen(cartId));
+        }).dimensions(x + 90, y + backgroundHeight + 2, 86, 18).build());
     }
 
     @Override
     protected void handledScreenTick() {
         super.handledScreenTick();
         if (button != null) button.setMessage(Text.translatable(handler.isRunning() ? "tunnelcart.stop" : "tunnelcart.start"));
+        if (torchButton != null) torchButton.setMessage(Text.translatable(handler.isTorches() ? "tunnelcart.torch_on" : "tunnelcart.torch_off"));
     }
 
     @Override

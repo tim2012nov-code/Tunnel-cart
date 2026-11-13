@@ -16,20 +16,25 @@ public class TunnelScreenHandler extends ScreenHandler {
     private final int rows;
     private final TunnelCartEntity cart;
     private final PropertyDelegate props;
+    private final int cartId;
 
     /** client */
     public TunnelScreenHandler(int id, PlayerInventory pi, PacketByteBuf buf) {
-        this(id, pi, new SimpleInventory(buf.readInt() * 9), null);
+        this(id, pi, new SimpleInventory(buf.readInt() * 9), null, buf.readInt());
     }
 
     /** server (cart == null on the client) */
     public TunnelScreenHandler(int id, PlayerInventory pi, Inventory inv, TunnelCartEntity cart) {
+        this(id, pi, inv, cart, cart == null ? -1 : cart.getId());
+    }
+
+    private TunnelScreenHandler(int id, PlayerInventory pi, Inventory inv, TunnelCartEntity cart, int cartId) {
         super(TunnelCartMod.TUNNEL_HANDLER, id);
-        this.inv = inv; this.cart = cart; this.rows = inv.size() / 9;
-        this.props = cart == null ? new ArrayPropertyDelegate(1) : new PropertyDelegate() {
-            @Override public int get(int i) { return cart.isRunning() ? 1 : 0; }
+        this.inv = inv; this.cart = cart; this.rows = inv.size() / 9; this.cartId = cartId;
+        this.props = cart == null ? new ArrayPropertyDelegate(2) : new PropertyDelegate() {
+            @Override public int get(int i) { return i == 0 ? (cart.isRunning() ? 1 : 0) : (cart.isTorches() ? 1 : 0); }
             @Override public void set(int i, int v) {}
-            @Override public int size() { return 1; }
+            @Override public int size() { return 2; }
         };
         inv.onOpen(pi.player);
         int yo = (rows - 4) * 18;
@@ -41,10 +46,13 @@ public class TunnelScreenHandler extends ScreenHandler {
 
     public int getRows() { return rows; }
     public boolean isRunning() { return props.get(0) == 1; }
+    public boolean isTorches() { return props.get(1) == 1; }
+    public int getCartId() { return cartId; }
 
     @Override
     public boolean onButtonClick(PlayerEntity player, int id) {
         if (cart != null && id == 0) { cart.toggleRunning(); return true; }
+        if (cart != null && id == 1) { cart.toggleTorches(); return true; }
         return false;
     }
 

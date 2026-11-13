@@ -9,5 +9,19 @@
  "tunnelcart.chunk": "Tunnel Cart: waiting for chunks to load",
  "tunnelcart.start": "Build path",
  "tunnelcart.stop": "Stop",
- "tunnelcart.no_leader": "Place it on a rail within 16 blocks of a Tunnel Cart"
+ "tunnelcart.no_leader": "Place it on a rail within 16 blocks of a Tunnel Cart",
+ "tunnelcart.torch_on": "Torches: ON",
+ "tunnelcart.torch_off": "Torches: OFF",
+ "tunnelcart.coords": "By coordinates",
+ "tunnelcart.coords_go": "Build",
+ "tunnelcart.coords_cancel": "Cancel",
+ "tunnelcart.coord_ok": "Tunnel Cart: route accepted",
+ "tunnelcart.done": "Tunnel Cart: destination reached",
+ "tunnelcart.coord_same": "Tunnel Cart: target is the current position",
+ "tunnelcart.coord_behind": "Tunnel Cart: target is behind (only ONE turn is allowed)",
+ "tunnelcart.coord_short": "Tunnel Cart: too close for braking zones / turn / climb (turn legs and the last leg need 11+ blocks; climb needs height+21)",
+ "tunnelcart.coord_busy": "Tunnel Cart: wait until the cart passes the turn, or re-place it",
+ "tunnelcart.need_plain_rail": "Tunnel Cart: out of plain rails (needed for the turn)",
+ "tunnelcart.need_brake": "Tunnel Cart: out of cobblestone (slowing blocks)",
+ "tunnelcart.blocked_path": "Tunnel Cart: cannot bypass the existing track (above and below are occupied)"
 }
