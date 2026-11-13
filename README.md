@@ -43,9 +43,15 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 
 ## 4.0
 
-* **Redstone torches** – button "Torches: on/off" under the cart menu. When on, every 8th rail gets a redstone wall torch next to it (instead of a redstone block under it). Needs redstone torches in the cart.
+* **Redstone torches** – button "Torches: on/off" under the cart menu. When on, every 16th rail gets a redstone wall torch next to it (plus three extra torches after a turn: right after the turn and 16 and 32 blocks later); redstone blocks stay every 8th rail. Needs redstone torches in the cart.
 * **By coordinates** – button "By coordinates" opens a menu with X / Y / Z (Y empty = current level). The route is: straight along the cart's heading → **one** turn → straight to the target → climb/descent at the very end.
   * The turn is a plain curved rail (keep a few plain rails in the cart). Before the turn and after it there are 10 slowing blocks (cobblestone) under the rails.
   * A climb is the last thing on the route: 10 slowing blocks before it, then 11 straight rails after it. A descent gets no slowing blocks.
   * Needs: both legs of a turn ≥ 11 blocks, the last leg ≥ height + 21 for a climb. Cobblestone must be in the cart for slowing blocks (it must NOT be listed in the High-Speed Rail config, so it stays slow).
 * **Existing tracks** – when the way ahead crosses an already built track, the route climbs over it (ramp up, flat part, ramp down). If the space above is occupied it goes under it instead.
+
+### 4.0.1
+* Fixed stray blocks inside the tunnel at the turn.
+* Slopes (and the rails next to them) now have 5 blocks of headroom.
+* Torches every 16 rails + three acceleration torches after a turn.
+* Speed is limited to 10 bps right before and on slopes (`SLOPE_SPEED` in `TunnelCartEntity`).

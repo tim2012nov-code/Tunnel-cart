@@ -37,6 +37,8 @@ import java.util.UUID;
 public class TunnelCartEntity extends ChestMinecartEntity {
     private static final TagKey<Block> C_ORES = TagKey.of(RegistryKeys.BLOCK, new Identifier("c", "ores"));
     private static final int FLAGS = Block.NOTIFY_LISTENERS;
+    private static final int SLOPE_TORCH = 16;   // torch spacing
+    private static final double SLOPE_SPEED = 0.5; // blocks/tick (10 bps) on and right before slopes
     private static final int LOOK = 26; // how far ahead we look for already built tracks
 
     private PathPlan plan = null;
@@ -151,6 +153,9 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 }
 
                 int perTick = (int) Math.ceil(max);
+                for (int j = Math.max(0, lastProg); j <= Math.min(built, lastProg + perTick + 2); j++) {
+                    if (plan.node(j).slope != PathPlan.Slope.FLAT) { max = Math.min(max, SLOPE_SPEED); break; }
+                }
                 int target = (int) Math.floor(prog) + Math.max(6, perTick * 3 + 3);
                 if (plan.hasTarget()) target = Math.min(target, plan.total());
                 int budget = perTick + 3;
@@ -261,7 +266,17 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     }
 
     // ------------------------------------------------------------ one path node
-    private List<BlockPos> boreOf(PathPlan.Node nd) {
+    /** 5 blocks of headroom on slopes (and next to them), 3 elsewhere. Returns the highest bore layer. */
+    private int topOf(int k) {
+        if (plan.node(k).slope != PathPlan.Slope.FLAT) return 4;
+        if (k > 0 && plan.node(k - 1).slope != PathPlan.Slope.FLAT) return 4;
+        if (plan.node(k + 1).slope != PathPlan.Slope.FLAT) return 4;
+        return 2;
+    }
+
+    private List<BlockPos> boreOf(int k) {
+        PathPlan.Node nd = plan.node(k);
+        int top = topOf(k);
         List<BlockPos> l = new ArrayList<>();
         BlockPos c = nd.pos;
         if (nd.corner) {
@@ -269,7 +284,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 l.add(c.offset(nd.in, pu).offset(nd.out, pv).up(h));
         } else {
             Direction side = nd.out.rotateYClockwise();
-            for (int a = -1; a <= 1; a++) for (int h = 0; h <= 2; h++) l.add(c.offset(side, a).up(h));
+            for (int a = -1; a <= 1; a++) for (int h = 0; h <= top; h++) l.add(c.offset(side, a).up(h));
         }
         return l;
     }
@@ -318,7 +333,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         if (!(plan.hasTarget() && k >= plan.total())) {
             PathPlan.Node nx = plan.node(k + 1);
             if (w.isChunkLoaded(nx.pos)) {
-                for (BlockPos p : boreOf(nx)) {
+                for (BlockPos p : boreOf(k + 1)) {
                     if (w.isOutOfHeightLimit(p) || w.getBlockState(p).getFluidState().isEmpty()) continue;
                     if (!take(Items.COBBLED_DEEPSLATE)) { issue = "need_cobbled"; return false; }
                     w.setBlockState(p, Blocks.COBBLED_DEEPSLATE.getDefaultState(), FLAGS);
@@ -326,23 +341,32 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             }
         }
 
+        // cells that already belong to the bore of earlier nodes must never be filled by this node's shell
+        java.util.Set<BlockPos> earlier = new java.util.HashSet<>();
+        for (int i = Math.max(0, k - 3); i < k; i++) earlier.addAll(boreOf(i));
+        int top = topOf(k);
+
         // 1) shell: EVERYTHING except deepslate becomes cobbled deepslate; ores go to the cart
         if (nd.corner) {
             for (int pu = -2; pu <= 2; pu++) for (int pv = -2; pv <= 2; pv++) for (int h = -1; h <= 3; h++) {
                 if (Math.abs(pu) <= 1 && Math.abs(pv) <= 1 && h >= 0 && h <= 2) continue;
                 if (pu == -2 && Math.abs(pv) <= 1) continue; // cross-section of the previous node
                 if (pv == 2 && Math.abs(pu) <= 1) continue;  // cross-section of the next node
-                if (!shellAt(w, c.offset(nd.in, pu).offset(nd.out, pv).up(h), h == -1)) return false;
+                BlockPos sp = c.offset(nd.in, pu).offset(nd.out, pv).up(h);
+                if (earlier.contains(sp)) continue;
+                if (!shellAt(w, sp, h == -1)) return false;
             }
         } else {
-            for (int a = -2; a <= 2; a++) for (int h = -1; h <= 3; h++) {
-                if (Math.abs(a) <= 1 && h >= 0 && h <= 2) continue;
-                if (!shellAt(w, c.offset(side, a).up(h), h == -1)) return false;
+            for (int a = -2; a <= 2; a++) for (int h = -1; h <= top + 1; h++) {
+                if (Math.abs(a) <= 1 && h >= 0 && h <= top) continue;
+                BlockPos sp = c.offset(side, a).up(h);
+                if (earlier.contains(sp)) continue;
+                if (!shellAt(w, sp, h == -1)) return false;
             }
         }
 
         // 2) bore
-        for (BlockPos p : boreOf(nd)) {
+        for (BlockPos p : boreOf(k)) {
             if (p.equals(c)) continue;
             if (nd.corner && p.equals(c.offset(nd.in, -1))) continue; // rail of the previous node
             if (!clear(w, p)) return false;
@@ -374,7 +398,15 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             return true;
         }
         if (!take(Items.POWERED_RAIL)) { issue = "need_rail"; return false; }
-        if (k % 8 == 0) {
+        boolean powerHere;
+        if (torches) {
+            powerHere = k % SLOPE_TORCH == 0;
+            if (plan.hasTurn()) {
+                int d = k - (plan.turnIndex() + 1);   // first powered rail after the turn + two more, 16 apart
+                if (d == 0 || d == SLOPE_TORCH || d == 2 * SLOPE_TORCH) powerHere = true;
+            }
+        } else powerHere = k % 8 == 0;
+        if (powerHere) {
             if (torches) {
                 BlockPos tp = c.offset(side, 1);
                 if (w.getBlockState(tp).isAir() && take(Items.REDSTONE_TORCH))
