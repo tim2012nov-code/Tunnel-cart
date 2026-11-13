@@ -61,3 +61,12 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 
 ### 4.0.3
 * The "cannot bypass" message now shows the coordinates of the rail that triggered it.
+
+### 4.0.4
+* **Fixed: "cannot bypass the existing track" when an old track runs next to / along the new one.**
+  * A foreign powered rail now counts as an obstacle only if the cart would really destroy it (inside the 3-wide bore, in the roof layer above it, or directly under our rail). Tracks that merely run 2+ blocks to the side, or 4+ blocks above/below, no longer trigger a bypass at all; rails in the outer shell are left untouched instead of being replaced by cobbled deepslate.
+  * A parallel track that lies inside the bore is bypassed over its whole length (the platform is as long as the old track, not limited to 40 blocks). If the old track continues past the end of the platform, the platform is lengthened instead of trying to start a second bypass (which was impossible: no room for a ramp).
+  * Another old track right behind the first one (inside the way back down) is covered by the same platform.
+  * The ramp check no longer rejects every bypass because of rails 4 levels away; the under-bypass is now deep enough not to touch the support block of the old rails.
+  * Columns that are not loaded yet are never treated as "checked": the cart waits ("waiting for chunks") instead of building into an unknown area, and re-checks them when they load.
+  * Logic moved to `DetourPlanner` (pure geometry, no Minecraft calls except through a small `Terrain` interface).

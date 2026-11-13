@@ -39,19 +39,17 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     private static final int FLAGS = Block.NOTIFY_LISTENERS;
     private static final int SLOPE_TORCH = 16;   // torch spacing
     private static final double SLOPE_SPEED = 0.5; // blocks/tick (10 bps) on and right before slopes
-    private static final int LOOK = 26; // how far ahead we look for already built tracks
 
     private PathPlan plan = null;
     private int built = 0;
     private int lastProg = 0;
-    private int scanned = 0;
+    private final DetourPlanner planner = new DetourPlanner();
     private boolean running = false;
     private boolean torches = false;
     private int tx, ty, tz;
     private UUID extUuid = null;
     private String issue = null;
     private Object[] issueArgs = new Object[0];
-    private BlockPos foundRail = null;
     private Inventory pool = this;
     private final List<ItemStack> junk = new ArrayList<>();
 
@@ -63,7 +61,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
 
     public void setup(BlockPos origin, Direction heading) {
         plan = PathPlan.straight(origin, heading);
-        built = 0; lastProg = 0; scanned = 0;
+        built = 0; lastProg = 0; planner.reset(0);
     }
     public Direction getHeading() { return plan != null ? plan.heading() : Direction.NORTH; }
     public boolean isRunning() { return running; }
@@ -94,7 +92,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             else if (front.slope != PathPlan.Slope.FLAT) err = "coord_busy";
             else {
                 PathPlan np = PathPlan.toTarget(front.pos, front.out, x, y != null ? y : front.pos.getY(), z);
-                plan = np; built = 0; lastProg = 0; scanned = 0;
+                plan = np; built = 0; lastProg = 0; planner.reset(0);
                 tx = x; ty = np.origin().getY() + np.dy(); tz = z;
                 running = true;
             }
@@ -188,96 +186,32 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     }
 
     // ------------------------------------------------------------ detours around existing tracks
+    /** false = node n must not be built now (issue is set): waiting for chunks, or no way around an old track. */
     private boolean ensureDetour(ServerWorld w, int n) {
-        if (scanned < n - 1) scanned = n - 1;
-        int y0 = plan.origin().getY();
-        while (scanned < n + LOOK) {
-            int j = scanned + 1;
-            if (plan.hasTarget() && j > plan.total()) { scanned = j; break; }
-            scanned = j;
-            if (plan.inDetour(j) || !plan.baseFlatAt(j)) continue;
-            List<Integer> ys = railsNear(w, j, y0);
-            if (ys.isEmpty()) continue;
-            int e = j;
-            for (int q = j + 1; q <= j + 40; q++) {
-                if (plan.hasTarget() && q > plan.total()) break;
-                if (!plan.baseFlatAt(q)) break;
-                List<Integer> more = railsNear(w, q, y0);
-                if (more.isEmpty()) break;
-                ys.addAll(more);
-                e = q;
-            }
-            if (!planDetour(w, n, j, e, ys, y0)) {
-                scanned = j - 1;
-                issue = "blocked_path";
-                if (foundRail != null) issueArgs = new Object[]{foundRail.getX(), foundRail.getY(), foundRail.getZ()};
-                return false;
-            }
-            scanned = Math.max(scanned, plan.detours().get(plan.detours().size() - 1).end());
-        }
-        return true;
-    }
-
-    private boolean planDetour(ServerWorld w, int n, int c, int e, List<Integer> ys, int y0) {
-        int top = Integer.MIN_VALUE, bot = Integer.MAX_VALUE;
-        for (int y : ys) { top = Math.max(top, y); bot = Math.min(bot, y); }
-        int plat = e - c + 1;
-        for (int sigma = 1; sigma >= -1; sigma -= 2) {          // above first, then below
-            int yP = sigma > 0 ? top + 5 : bot - 5;
-            int m = Math.abs(yP - y0);
-            if (m < 1 || m > 14) continue;
-            int s = c - m;
-            if (s < n) continue;
-            if (sigma > 0 ? yP + 3 >= w.getTopY() : yP - 1 <= w.getBottomY()) continue;
-            PathPlan.Detour d = new PathPlan.Detour(s, m, plat, sigma);
-            if (!plan.windowFlat(d.start, d.end())) continue;
-            boolean free = true;
-            for (int i = d.start; i <= d.end() && free; i++) {
-                int yi = y0 + d.at(i)[0];
-                if (!railsNear(w, i, yi).isEmpty()) free = false;
-            }
-            if (!free) continue;
-            plan.addDetour(d);
-            return true;
-        }
+        DetourPlanner.Result r = planner.ensure(plan, terrain(w), n);
+        if (r == DetourPlanner.Result.OK) return true;
+        if (r == DetourPlanner.Result.CHUNK) { issue = "chunk"; return false; }
+        issue = "blocked_path";
+        BlockPos fr = planner.found();
+        if (fr != null) issueArgs = new Object[]{fr.getX(), fr.getY(), fr.getZ()};
         return false;
     }
 
-    /** y-levels of foreign rails within 2 blocks (horizontally) of column j and within 4 levels of yRef. */
-    private List<Integer> railsNear(ServerWorld w, int j, int yRef) {
-        List<Integer> out = new ArrayList<>();
-        BlockPos c = plan.col(j);
-        for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
-            int x = c.getX() + dx, z = c.getZ() + dz;
-            if (!w.isChunkLoaded(new BlockPos(x, 0, z))) continue;
-            for (int y = yRef - 4; y <= yRef + 4; y++) {
+    private static DetourPlanner.Terrain terrain(ServerWorld w) {
+        return new DetourPlanner.Terrain() {
+            @Override public boolean loaded(int x, int z) { return w.isChunkLoaded(new BlockPos(x, 0, z)); }
+            @Override public boolean poweredRail(int x, int y, int z) {
                 BlockPos q = new BlockPos(x, y, z);
-                if (w.isOutOfHeightLimit(q)) continue;
-                if (!w.getBlockState(q).isOf(Blocks.POWERED_RAIL)) continue; // only powered rails trigger a bypass
-                if (isOwn(q, j)) continue;
-                out.add(y);
-                if (foundRail == null || out.size() == 1) foundRail = q;
+                return !w.isOutOfHeightLimit(q) && w.getBlockState(q).isOf(Blocks.POWERED_RAIL);
             }
-        }
-        return out;
-    }
-
-    private boolean isOwn(BlockPos q, int j) {
-        if (plan.behindOrigin(q)) return true;
-        int hi = j + 4;
-        if (plan.hasTarget()) hi = Math.min(hi, plan.total());
-        for (int i = Math.max(0, j - 4); i <= hi; i++) if (plan.node(i).pos.equals(q)) return true;
-        return false;
+            @Override public int bottomY() { return w.getBottomY(); }
+            @Override public int topY() { return w.getTopY(); }
+        };
     }
 
     // ------------------------------------------------------------ one path node
     /** 5 blocks of headroom on slopes (and next to them), 3 elsewhere. Returns the highest bore layer. */
-    private int topOf(int k) {
-        if (plan.node(k).slope != PathPlan.Slope.FLAT) return 4;
-        if (k > 0 && plan.node(k - 1).slope != PathPlan.Slope.FLAT) return 4;
-        if (plan.node(k + 1).slope != PathPlan.Slope.FLAT) return 4;
-        return 2;
-    }
+    private int topOf(int k) { return plan.top(k); }
 
     private List<BlockPos> boreOf(int k) {
         PathPlan.Node nd = plan.node(k);
@@ -320,6 +254,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         BlockState s = w.getBlockState(p);
         if (s.isOf(Blocks.DEEPSLATE) || s.isOf(Blocks.COBBLED_DEEPSLATE)) return true;
         if (floor && s.isOf(Blocks.COBBLESTONE)) return true; // slowing block of an earlier node
+        if (s.isOf(Blocks.POWERED_RAIL)) return true;        // a track running next to ours is left alone
         if (s.hasBlockEntity() || s.getHardness(w, p) < 0) return true;
         if (!take(Items.COBBLED_DEEPSLATE)) { issue = "need_cobbled"; return false; }
         if (isWanted(s)) mine(w, p, s);
@@ -530,7 +465,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             for (int i = 0; i + 3 < arr.length; i += 4) plan.addDetour(new PathPlan.Detour(arr[i], arr[i + 1], arr[i + 2], arr[i + 3]));
             built = nbt.getInt("Built");
             lastProg = nbt.getInt("Prog");
-            scanned = built;
+            planner.reset(built);
         }
     }
 }

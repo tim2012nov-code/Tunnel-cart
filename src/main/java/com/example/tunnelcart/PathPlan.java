@@ -29,9 +29,12 @@ public final class PathPlan {
 
     /** A bypass over (sigma = +1) or under (sigma = -1) an already built track. */
     public static final class Detour {
-        public final int start, m, plat, sigma;
+        public final int start, m, sigma;
+        public int plat; // may be lengthened while the descent has not been built yet
         public Detour(int start, int m, int plat, int sigma) { this.start = start; this.m = m; this.plat = plat; this.sigma = sigma; }
         public int end() { return start + 2 * m + plat - 1; }
+        /** index of the first node of the way back down (up) to the base level */
+        public int rampStart() { return start + m + plat; }
         /** height offset of node i (relative to the origin level) and its slope: {offset, 0 flat / 1 up / 2 down} */
         int[] at(int i) {
             int j = i - start;
@@ -135,6 +138,14 @@ public final class PathPlan {
         int along = ax * h0.getOffsetX() + az * h0.getOffsetZ();
         int lat = h0.getAxis() == Direction.Axis.X ? az : ax;
         return along <= 0; // everything behind the origin is never an obstacle
+    }
+
+    /** Highest bore layer of node k: 4 (5 blocks of headroom) on slopes and next to them, 2 elsewhere. */
+    public int top(int k) {
+        if (node(k).slope != Slope.FLAT) return 4;
+        if (k > 0 && node(k - 1).slope != Slope.FLAT) return 4;
+        if (node(k + 1).slope != Slope.FLAT) return 4;
+        return 2;
     }
 
     public Node node(int i) {
