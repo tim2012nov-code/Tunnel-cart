@@ -1,0 +1,269 @@
+name: Publish missing Tunnel Cart releases
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-backfill:
+    name: Build and publish v${{ matrix.version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - version: "4.0.0"
+            sha: "d18dba5eaa4795a60dd19dc7ae53f6312bbab157"
+            notes: |
+              ## Tunnel Cart 4.0.0
+
+              - Added a **Torches: on/off** menu toggle for redstone torches along the track.
+              - Added **By coordinates** mode with X/Y/Z target input (empty Y keeps the current level).
+              - Coordinate routes support a straight section, one turn, another straight section, and a final climb or descent.
+              - Added detection of existing powered-rail tracks and automatic bypass planning over or under an obstruction.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.1"
+            sha: "c284d9bcde331a8e3381197608f0a08ac1008978"
+            notes: |
+              ## Tunnel Cart 4.0.1
+
+              - Fixed stray blocks appearing inside the tunnel at a turn.
+              - Increased headroom around slopes to five blocks.
+              - Adjusted powered-rail and torch placement: optional torches every 16 rails, plus acceleration points after a turn; redstone blocks remain on the regular interval.
+              - Limited speed to 10 blocks/s before and on slopes.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.2"
+            sha: "854085404ec6c5227e51d5930648b3b64b73cf45"
+            notes: |
+              ## Tunnel Cart 4.0.2
+
+              - Existing-track bypass is now triggered only by powered rails.
+              - Plain rails, other rail types, and rails behind the starting point are ignored by the bypass trigger.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.3"
+            sha: "8e4bbccfafd3d165e91e7601a55670e19c0863df"
+            notes: |
+              ## Tunnel Cart 4.0.3
+
+              - The message shown when an existing track cannot be bypassed now includes the coordinates of the rail that caused the obstruction.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.4"
+            sha: "9e396e7e8ee9e377a8838aa945ccccb0f065d078"
+            notes: |
+              ## Tunnel Cart 4.0.4
+
+              - Fixed false “cannot bypass” errors when an old powered-rail line runs beside or parallel to the new route.
+              - Only rails that would actually be affected by the tunnel bore, roof, or floor count as bypass obstacles.
+              - Parallel tracks inside the bore are bypassed as a whole; the bypass platform can be extended when the old track continues.
+              - Nearby obstacles can be handled as part of the same bypass.
+              - Improved ramp clearance checks for over/under bypasses.
+              - Unloaded chunks are no longer treated as clear terrain: the cart waits for chunks and checks them again after loading.
+              - Moved bypass geometry into the separate DetourPlanner component.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.5"
+            sha: "551cc28fa4624444e9b92871ab73e66b2287366a"
+            notes: |
+              ## Tunnel Cart 4.0.5
+
+              - Sealed gaps beside the tunnel where the roof transitions between flat sections and slopes, preventing water and cave openings from leaking into the tunnel.
+              - Fixed the trailing seat cart position after a turn; it now follows the built path.
+              - Added automatic acceleration points after turns and on slopes, even when the torch toggle is off. Redstone blocks are used as a fallback when there are no torches.
+              - Added a slowing zone before the climb portion of an over/under bypass.
+              - Extended route look-ahead from 26 to 34 nodes.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.6"
+            sha: "5eb7f11f370dbaa34a45daf66abeae124262bb3a"
+            notes: |
+              ## Tunnel Cart 4.0.6
+
+              - Added 11 straight rails after a descent, matching the post-climb track, and updated the minimum route length for descending to depth + 11 blocks.
+              - Added automatic acceleration points immediately before a turn and before each slope (climb, descent, or bypass), in addition to the existing acceleration points after turns and slopes.
+
+              This release uses a reconstructed 4.0.6 source snapshot. The original repository history combined the 4.0.6 and 4.0.7 updates in one commit; this release snapshot separates the 4.0.6 changes documented in the project changelog.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.7"
+            sha: "0f0385fa3812b95808d79ab7ee0b9543b6b47468"
+            notes: |
+              ## Tunnel Cart 4.0.7
+
+              - Reworked automatic acceleration placement independently of the torch toggle.
+              - Before and after turns, acceleration points are placed at the specified 16-block intervals.
+              - Before slopes, during slopes, and after slopes, the acceleration layout now covers climbs, descents, and over/under bypasses.
+              - Redstone blocks remain the fallback when redstone torches are unavailable.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.8"
+            sha: "5cbaf83b842293a04736127f0eb12b978a6bfd85"
+            notes: |
+              ## Tunnel Cart 4.0.8
+
+              - Fixed the redstone torch on the final rail before a turn being removed while the turn block is built.
+              - Capped speed through a turn and its two slowing zones at 7.5 blocks/s, independently of rail power and High-Speed Rail settings.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+          - version: "4.0.9"
+            sha: "94f4eafdc917f2fbd7a65d98f3aafc8a5f82ca99"
+            notes: |
+              ## Tunnel Cart 4.0.9
+
+              - Increased slowing zones from 10 to **15 blocks** before and after turns, before climbs and descents, and before both stages of an over/under bypass.
+              - Updated minimum route lengths: both turn legs must be at least 16 blocks; the final leg for a climb or descent must be at least the height change + 26 blocks.
+              - Increased route planner look-ahead to 40 nodes and the chunk-readiness threshold to 32 nodes, allowing the cart to plan slowing zones before bypasses.
+
+              **Minecraft:** 1.20.1 · **Loader:** Fabric
+
+    steps:
+      - name: Check out this version's source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.sha }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+          cache-disabled: true
+
+      - name: Build mod
+        run: gradle build --no-daemon --stacktrace
+
+      - name: Prepare release asset
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ matrix.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          found=false
+          shopt -s nullglob
+          for file in build/libs/*.jar; do
+            case "$file" in
+              *-sources.jar) continue ;;
+            esac
+            cp "$file" "dist/tunnelcart-${RELEASE_VERSION}.jar"
+            found=true
+            break
+          done
+          if [ "$found" != true ]; then
+            echo "No distributable JAR found in build/libs" >&2
+            exit 1
+          fi
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ matrix.version }}
+          RELEASE_SHA: ${{ matrix.sha }}
+          RELEASE_NOTES: ${{ matrix.notes }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v${RELEASE_VERSION}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$tag already exists; leaving the published release unchanged."
+            exit 0
+          fi
+          printf '%s\n' "$RELEASE_NOTES" > release-notes.md
+          gh release create "$tag" "dist/tunnelcart-${RELEASE_VERSION}.jar" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "Tunnel Cart v${RELEASE_VERSION}" \
+            --notes-file release-notes.md
+
+  update-existing-release:
+    name: Complete the existing v2.0.0 release notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update v2.0.0 notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## Tunnel Cart 2.0.0
+
+          This release was published with its original JAR asset. The repository does not contain a detailed 2.0.0 change log, so no unverified feature list is attributed to this version.
+
+          **Minecraft:** 1.20.1 · **Loader:** Fabric
+          EOF
+          gh release edit v2.0.0 --repo "$GITHUB_REPOSITORY" \
+            --title "Tunnel Cart v2.0.0" \
+            --notes-file release-notes.md
+
+  publish-current:
+    name: Publish the current version on future main updates
+    needs: publish-backfill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+          cache-disabled: true
+
+      - name: Build current version
+        id: current
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^mod_version=//p' gradle.properties | tail -n 1)"
+          if [ -z "$version" ]; then
+            echo "Could not read mod_version from gradle.properties" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$version already exists; nothing to publish."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and package
+        if: steps.current.outputs.exists == 'false'
+        run: |
+          gradle build --no-daemon --stacktrace
+          mkdir -p dist
+          cp "$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)" "dist/tunnelcart-${{ steps.current.outputs.version }}.jar"
+
+      - name: Publish latest release
+        if: steps.current.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.current.outputs.version }}" "dist/tunnelcart-${{ steps.current.outputs.version }}.jar" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Tunnel Cart v${{ steps.current.outputs.version }}" \
+            --generate-notes
