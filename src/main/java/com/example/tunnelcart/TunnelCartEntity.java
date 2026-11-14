@@ -57,7 +57,8 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     private boolean torches = false;
     private int tx, ty, tz;
     private UUID extUuid = null;
-    private static final int ALERT_TICKS = 600;
+    private static final int ALERT_STAY = 100; // an alert stays on screen for 5 seconds
+    private static final int ALERT_REPEAT = 600; // a persistent problem is announced again every 30 seconds
     private String alertKey = null;
     private int alertAge = 0;
     private String issue = null;
@@ -192,7 +193,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 if (age % 20 == 0) flushJunk(sw);
                 if (issue != null && speed < 0.05) {
                     String key = issue + java.util.Arrays.toString(issueArgs);
-                    if (!key.equals(alertKey) || age - alertAge >= ALERT_TICKS) {
+                    if (!key.equals(alertKey) || age - alertAge >= ALERT_REPEAT) {
                         alertKey = key;
                         alertAge = age;
                         alert(sw, sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500), issue, issueArgs);
@@ -224,7 +225,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         Text title = Text.translatable("tunnelcart.alert.title." + kind).formatted(color, Formatting.BOLD);
         Text subtitle = Text.translatable("tunnelcart.alert." + key, args).formatted(color);
         for (ServerPlayerEntity p : players) {
-            p.networkHandler.sendPacket(new TitleFadeS2CPacket(5, kind.equals("ok") ? 100 : ALERT_TICKS, 20));
+            p.networkHandler.sendPacket(new TitleFadeS2CPacket(5, ALERT_STAY, 20));
             p.networkHandler.sendPacket(new SubtitleS2CPacket(subtitle));
             p.networkHandler.sendPacket(new TitleS2CPacket(title));
             w.playSound(null, p.getBlockPos(), sound, SoundCategory.MASTER, 1.0f, pitch);
