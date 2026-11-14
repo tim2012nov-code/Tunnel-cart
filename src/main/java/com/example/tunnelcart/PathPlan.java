@@ -12,7 +12,7 @@ import java.util.List;
  * Straight mode: endless line. Target mode: leg 1, ONE turn, leg 2, and the climb/descent at the very end.
  */
 public final class PathPlan {
-    public static final int BRAKE = 10;        // slowing blocks before a turn / after a turn / before a climb
+    public static final int BRAKE = 15;        // slowing blocks before a turn / after a turn / before every slope (climb, descent, bypass)
     public static final int AFTER_CLIMB = 11;  // straight rails after the climb
 
     public enum Slope { FLAT, UP, DOWN }
@@ -76,7 +76,7 @@ public final class PathPlan {
         } else if (a1 < 0) throw new IllegalArgumentException("coord_behind");
         int leg = l2 > 0 ? l2 : a1;
         if (dyy > 0 && leg < dyy + BRAKE + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
-        if (dyy < 0 && leg < -dyy + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
+        if (dyy < 0 && leg < -dyy + BRAKE + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
         if (a1 == 0 && l2 == 0) throw new IllegalArgumentException("coord_short");
         return new PathPlan(origin, h0, h1, true, a1, l2, dyy);
     }
@@ -158,18 +158,18 @@ public final class PathPlan {
         for (Detour d : detours) if (k >= d.start && k <= d.end()) v = d.at(k);
         Slope sl = Slope.values()[v[1]];
         boolean brake = false;
-        if (target && sl == Slope.FLAT && !turnHere) {
-            if (l2 > 0 && ((k >= l1 - BRAKE && k < l1) || (k > l1 && k <= l1 + BRAKE))) brake = true;
-            if (dy > 0) {
-                int s = l1 + l2 - (AFTER_CLIMB - 1) - dy;
-                if (k >= s - BRAKE && k < s) brake = true;
-            }
-        }
-        // a bypass over (or under) an old track is a climb too: slowing blocks before its way up
         if (sl == Slope.FLAT && !turnHere) {
+            if (target) {
+                if (l2 > 0 && ((k >= l1 - BRAKE && k < l1) || (k > l1 && k <= l1 + BRAKE))) brake = true;
+                if (dy != 0) {                                    // before the climb / descent at the end
+                    int s = l1 + l2 - (AFTER_CLIMB - 1) - Math.abs(dy);
+                    if (k >= s - BRAKE && k < s) brake = true;
+                }
+            }
+            // a bypass over/under an old track: before its way out of the base level and before its way back
             for (Detour d : detours) {
-                int up = d.sigma > 0 ? d.start : d.rampStart();   // over: the first ramp, under: the way back up
-                if (k >= up - BRAKE && k < up) brake = true;
+                if (k >= d.start - BRAKE && k < d.start) brake = true;
+                if (k >= d.rampStart() - BRAKE && k < d.rampStart()) brake = true;
             }
         }
         return new Node(c.up(v[0]), in, out, turnHere, brake, sl);

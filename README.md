@@ -45,9 +45,9 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 
 * **Redstone torches** – button "Torches: on/off" under the cart menu. When on, every 16th rail gets a redstone wall torch next to it (plus three extra torches after a turn: right after the turn and 16 and 32 blocks later); redstone blocks stay every 8th rail. Needs redstone torches in the cart.
 * **By coordinates** – button "By coordinates" opens a menu with X / Y / Z (Y empty = current level). The route is: straight along the cart's heading → **one** turn → straight to the target → climb/descent at the very end.
-  * The turn is a plain curved rail (keep a few plain rails in the cart). Before the turn and after it there are 10 slowing blocks (cobblestone) under the rails.
-  * A climb is the last thing on the route: 10 slowing blocks before it, then 11 straight rails after it. A descent gets no slowing blocks, but also 11 straight rails after it.
-  * Needs: both legs of a turn ≥ 11 blocks, the last leg ≥ height + 21 for a climb. Cobblestone must be in the cart for slowing blocks (it must NOT be listed in the High-Speed Rail config, so it stays slow).
+  * The turn is a plain curved rail (keep a few plain rails in the cart). Before the turn and after it there are 15 slowing blocks (cobblestone) under the rails.
+  * A climb or descent is the last thing on the route: 15 slowing blocks before it, then 11 straight rails after it.
+  * Needs: both legs of a turn ≥ 16 blocks, the last leg ≥ height + 26 for a climb or descent. Cobblestone must be in the cart for slowing blocks (it must NOT be listed in the High-Speed Rail config, so it stays slow).
 * **Existing tracks** – when the way ahead crosses an already built track, the route climbs over it (ramp up, flat part, ramp down). If the space above is occupied it goes under it instead.
 
 ### 4.0.1
@@ -90,3 +90,8 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 ### 4.0.8
 * The torch on the last rail before a turn is no longer removed when the turn block is built (the 3x3 bore of the turn used to clear it).
 * Speed through a turn and its two slowing zones is capped at 7.5 blocks/s by the cart itself (independent of rail power and High-Speed Rail settings), so the cart cannot leave the curved rail at high speed.
+
+### 4.0.9
+* Slowing zones are now **15** blocks (was 10) everywhere: before and after a turn, before every climb and **descent**, and before each way of a bypass (over or under an old track: before it leaves the base level and before its way back). Torch layout unchanged.
+* Minimum lengths grow accordingly: turn legs ≥ 16, last leg ≥ height + 26 (climb and descent).
+* The route planner looks 40 nodes ahead (waits for chunks until 32 are loaded) so the slowing zone before a bypass is normally not built yet when the bypass is planned.
