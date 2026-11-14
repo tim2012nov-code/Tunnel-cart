@@ -165,6 +165,36 @@ public final class PathPlan {
                 if (k >= s - BRAKE && k < s) brake = true;
             }
         }
+        // a bypass over (or under) an old track is a climb too: slowing blocks before its way up
+        if (sl == Slope.FLAT && !turnHere) {
+            for (Detour d : detours) {
+                int up = d.sigma > 0 ? d.start : d.rampStart();   // over: the first ramp, under: the way back up
+                if (k >= up - BRAKE && k < up) brake = true;
+            }
+        }
         return new Node(c.up(v[0]), in, out, turnHere, brake, sl);
+    }
+
+    /**
+     * Rails that always get a redstone torch (even with the torch button off):
+     * the first rail after a turn and two more 16 apart, every 8th rail of a slope,
+     * and the first rail after a slope plus one 16 further on (to accelerate again).
+     */
+    public boolean boost(int k) {
+        if (k < 1) return false;
+        if (hasTurn()) {
+            int d = k - (l1 + 1);
+            if (d == 0 || d == 16 || d == 32) return true;
+        }
+        if (node(k).slope != Slope.FLAT) {
+            int r = 0;
+            while (k - r - 1 >= 0 && node(k - r - 1).slope != Slope.FLAT) r++;
+            return r % 8 == 0;
+        }
+        for (int back : new int[]{1, 17}) {
+            int t = k - back;
+            if (t >= 0 && node(t).slope != Slope.FLAT && node(t + 1).slope == Slope.FLAT) return true;
+        }
+        return false;
     }
 }

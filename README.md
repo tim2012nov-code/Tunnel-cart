@@ -70,3 +70,10 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
   * The ramp check no longer rejects every bypass because of rails 4 levels away; the under-bypass is now deep enough not to touch the support block of the old rails.
   * Columns that are not loaded yet are never treated as "checked": the cart waits ("waiting for chunks") instead of building into an unknown area, and re-checks them when they load.
   * Logic moved to `DetourPlanner` (pure geometry, no Minecraft calls except through a small `Terrain` interface).
+
+### 4.0.5
+* **Water at the start of a climb:** where the roof height changes (flat <-> slope) the cells beside the bore that were above the neighbour's roof were never sealed, so water/caves behind them flowed in. They are now sealed with cobbled deepslate (only air/liquid cells are touched).
+* **The trailing (seat) cart no longer ends up inside the wall after a turn:** it is placed 1.5 blocks behind along the built path instead of along the original heading.
+* **Torches for acceleration even with the torch button off:** one on the first rail after a turn plus two more 16 blocks apart; on every slope (first rail and every 8th) and on the first rail after a slope plus one 16 further. If the cart has no torches, a redstone block is used instead (never in a slowing zone).
+* **A bypass over/under an old track is treated like a climb:** 10 slowing blocks (cobblestone) before its way up, and torches on the slopes (cobblestone must be in the cart).
+* The planner looks 34 nodes ahead (was 26) so the slowing zone before a bypass is normally not built yet when the bypass is planned.

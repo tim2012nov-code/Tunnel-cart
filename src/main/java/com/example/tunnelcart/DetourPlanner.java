@@ -27,7 +27,7 @@ public final class DetourPlanner {
 
     public enum Result { OK, CHUNK, BLOCKED }
 
-    public static final int LOOK = 26;       // how far ahead the route is scanned
+    public static final int LOOK = 34;       // how far ahead the route is scanned (room for the slowing blocks before a bypass)
     public static final int MIN_LOOK = 17;   // the cart waits until at least this much is scanned (longest ramp + 1)
     public static final int MAX_RAMP = 16;
     public static final int GAP = 3;         // gap (no rails) that still counts as the same foreign track

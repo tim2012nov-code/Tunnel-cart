@@ -36,8 +36,7 @@ public class ExtensionCartEntity extends ChestMinecartEntity {
             if (leader != null && sw.getEntity(leader) instanceof TunnelCartEntity t && t.isAlive()) {
                 setVelocity(t.getVelocity());
                 super.tick();
-                Vec3d back = new Vec3d(-t.getHeading().getOffsetX(), 0, -t.getHeading().getOffsetZ()).multiply(1.5);
-                Vec3d p = t.getPos().add(back);
+                Vec3d p = t.pointBehind(1.5);   // along the built path, so it also follows a turn
                 setPosition(p.x, p.y, p.z);
                 setYaw(t.getYaw());
                 return;

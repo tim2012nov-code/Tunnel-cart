@@ -305,6 +305,10 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             }
         }
 
+        // 1b) where the roof height changes (flat <-> slope) the cells next to our bore, above the neighbour's
+        //     roof, belong to no shell: water or a cave there would flow into the tunnel
+        if (!sealNeighbours(w, k)) return false;
+
         // 2) bore
         for (BlockPos p : boreOf(k)) {
             if (p.equals(c)) continue;
@@ -338,29 +342,74 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             return true;
         }
         if (!take(Items.POWERED_RAIL)) { issue = "need_rail"; return false; }
-        boolean powerHere;
-        if (torches) {
-            powerHere = k % SLOPE_TORCH == 0;
-            if (plan.hasTurn()) {
-                int d = k - (plan.turnIndex() + 1);   // first powered rail after the turn + two more, 16 apart
-                if (d == 0 || d == SLOPE_TORCH || d == 2 * SLOPE_TORCH) powerHere = true;
-            }
-        } else powerHere = k % 8 == 0;
-        if (powerHere) {
-            if (torches) {
-                BlockPos tp = c.offset(side, 1);
-                if (w.getBlockState(tp).isAir() && take(Items.REDSTONE_TORCH))
-                    w.setBlockState(tp, Blocks.REDSTONE_WALL_TORCH.getDefaultState().with(WallRedstoneTorchBlock.FACING, side.getOpposite()), Block.NOTIFY_ALL);
-            } else if (!nd.brake && take(Items.REDSTONE_BLOCK)) {
-                w.setBlockState(f, Blocks.REDSTONE_BLOCK.getDefaultState(), FLAGS);
+        // power: torches at turns and on slopes always (cart accelerates again), otherwise by the button
+        boolean boost = plan.boost(k);
+        boolean placed = false;
+        if (boost || (torches && k % SLOPE_TORCH == 0)) {
+            BlockPos tp = c.offset(side, 1);
+            if (w.getBlockState(tp).isAir() && take(Items.REDSTONE_TORCH)) {
+                w.setBlockState(tp, Blocks.REDSTONE_WALL_TORCH.getDefaultState().with(WallRedstoneTorchBlock.FACING, side.getOpposite()), Block.NOTIFY_ALL);
+                placed = true;
             }
         }
+        // no torches in the cart (or button off): redstone block under the rail, never in a slowing zone
+        if (!placed && !torches && !nd.brake && (k % 8 == 0 || boost) && take(Items.REDSTONE_BLOCK))
+            w.setBlockState(f, Blocks.REDSTONE_BLOCK.getDefaultState(), FLAGS);
         RailShape shape;
         if (nd.slope == PathPlan.Slope.UP) shape = ascending(nd.out);
         else if (nd.slope == PathPlan.Slope.DOWN) shape = ascending(nd.out.getOpposite());
         else shape = nd.out.getAxis() == Direction.Axis.X ? RailShape.EAST_WEST : RailShape.NORTH_SOUTH;
         w.setBlockState(c, Blocks.POWERED_RAIL.getDefaultState().with(PoweredRailBlock.SHAPE, shape), Block.NOTIFY_ALL);
         return true;
+    }
+
+    private boolean sealNeighbours(ServerWorld w, int k) {
+        PathPlan.Node nd = plan.node(k);
+        if (nd.corner) return true;
+        java.util.Set<BlockPos> open = new java.util.HashSet<>();
+        for (int i = Math.max(0, k - 1); i <= k + 1; i++) {
+            if (plan.hasTarget() && i > plan.total()) continue;
+            open.addAll(boreOf(i));
+        }
+        for (BlockPos p : boreOf(k)) {
+            for (int sg = -1; sg <= 1; sg += 2) {
+                BlockPos q = p.offset(nd.out, sg);
+                if (open.contains(q) || w.isOutOfHeightLimit(q)) continue;
+                BlockState qs = w.getBlockState(q);
+                if (!qs.isAir() && qs.getFluidState().isEmpty()) continue;   // solid already
+                if (!take(Items.COBBLED_DEEPSLATE)) { issue = "need_cobbled"; return false; }
+                w.setBlockState(q, Blocks.COBBLED_DEEPSLATE.getDefaultState(), FLAGS);
+            }
+        }
+        return true;
+    }
+
+    /** Point `dist` blocks behind the cart measured along the built path (follows the turn, unlike a straight line). */
+    public Vec3d pointBehind(double dist) {
+        Vec3d pos = getPos();
+        if (plan == null) return pos;
+        Direction h0 = plan.heading();
+        if (lastProg == 0) {
+            BlockPos o = plan.origin();
+            double along = (getX() - o.getX() - 0.5) * h0.getOffsetX() + (getZ() - o.getZ() - 0.5) * h0.getOffsetZ();
+            if (along <= 0.0) return pos.add(-h0.getOffsetX() * dist, 0, -h0.getOffsetZ() * dist);
+        }
+        PathPlan.Node cur = plan.node(lastProg);
+        double cx = cur.pos.getX() + 0.5, cz = cur.pos.getZ() + 0.5;
+        double d = (pos.x - cx) * cur.out.getOffsetX() + (pos.z - cz) * cur.out.getOffsetZ();
+        double yOff = pos.y - cur.pos.getY();
+        if (d >= dist) return pos.add(-cur.out.getOffsetX() * dist, 0, -cur.out.getOffsetZ() * dist);
+        double back = dist - Math.max(d, 0.0);
+        int i = lastProg;
+        while (back > 1.0 && i > 0) { back -= 1.0; i--; }
+        PathPlan.Node a = plan.node(i);
+        double ax = a.pos.getX() + 0.5, az = a.pos.getZ() + 0.5, ay = a.pos.getY() + yOff;
+        if (i > 0) {
+            PathPlan.Node b = plan.node(i - 1);
+            double bx = b.pos.getX() + 0.5, bz = b.pos.getZ() + 0.5, by = b.pos.getY() + yOff;
+            return new Vec3d(ax + (bx - ax) * back, ay + (by - ay) * back, az + (bz - az) * back);
+        }
+        return new Vec3d(ax - h0.getOffsetX() * back, ay, az - h0.getOffsetZ() * back);
     }
 
     private boolean clear(ServerWorld w, BlockPos p) {
