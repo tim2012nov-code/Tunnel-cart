@@ -1,0 +1,73 @@
+name: Repair Tunnel Cart v4.1.1 release asset
+
+on:
+  push:
+    branches:
+      - repair/v4.1.1-release-asset
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild-and-replace:
+    name: Rebuild the fixed 4.1.1 source and replace its release JAR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+          cache-disabled: true
+
+      - name: Point v4.1.1 tag to the complete fixed source commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixed_sha="$(git rev-parse HEAD^)"
+          version="$(sed -n 's/^mod_version=//p' gradle.properties | tail -n 1)"
+          test "$version" = "4.1.1"
+          git push --force origin "$fixed_sha:refs/tags/v4.1.1"
+          echo "Updated v4.1.1 tag to $fixed_sha"
+
+      - name: Build the mod
+        run: gradle build --no-daemon --stacktrace
+
+      - name: Prepare replacement JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          found=false
+          shopt -s nullglob
+          for file in build/libs/*.jar; do
+            case "$file" in
+              *-sources.jar) continue ;;
+            esac
+            cp "$file" dist/tunnelcart-4.1.1.jar
+            found=true
+            break
+          done
+          if [ "$found" != true ]; then
+            echo "No distributable JAR found in build/libs" >&2
+            exit 1
+          fi
+
+      - name: Replace the existing GitHub Release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload v4.1.1 dist/tunnelcart-4.1.1.jar \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
