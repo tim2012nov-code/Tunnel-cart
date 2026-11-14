@@ -35,7 +35,7 @@
 3. Скачай файл `.jar` со страницы [GitHub Releases](https://github.com/tim2012nov-code/Tunnel-cart/releases).
 4. Помести файл мода в папку `mods` и запусти игру с профилем Fabric.
 
-**Дополнительно:** мод совместим с [High-Speed Rail](https://www.curseforge.com/minecraft/mc-mods/high-speed-rail). Этот мод не обязателен.
+**Дополнительно:** мод совместим с [High-Speed Rail](https://www.curseforge.com/minecraft/mc-mods/highspeed-rail). Этот мод не обязателен.
 
 > Исходники в ветке `main` соответствуют версии **4.0.9**. На момент обновления README опубликованные GitHub Releases ещё заканчиваются на **3.0.1**; для загрузки более новой версии сначала должен быть опубликован соответствующий релиз.
 
