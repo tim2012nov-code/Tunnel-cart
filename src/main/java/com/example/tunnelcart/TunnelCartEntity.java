@@ -21,10 +21,18 @@ import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.network.packet.s2c.play.ClearTitleS2CPacket;
+import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
+import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
+import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
@@ -49,6 +57,9 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     private boolean torches = false;
     private int tx, ty, tz;
     private UUID extUuid = null;
+    private static final int ALERT_TICKS = 600;
+    private String alertKey = null;
+    private int alertAge = 0;
     private String issue = null;
     private Object[] issueArgs = new Object[0];
     private Inventory pool = this;
@@ -100,8 +111,8 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         } catch (IllegalArgumentException ex) {
             err = ex.getMessage();
         }
-        if (err != null) player.sendMessage(Text.translatable("tunnelcart." + err), true);
-        else player.sendMessage(Text.translatable("tunnelcart.coord_ok"), true);
+        if (player instanceof ServerPlayerEntity sp && getWorld() instanceof ServerWorld sw)
+            alert(sw, java.util.List.of(sp), err != null ? err : "coord_ok", new Object[0]);
     }
 
     // ------------------------------------------------------------ GUI
@@ -174,19 +185,50 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 if (finished && lastProg >= plan.total()) {
                     running = false;
                     speed = 0;
-                    Text msg = Text.translatable("tunnelcart.done");
-                    for (var p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500)) p.sendMessage(msg, true);
+                    alert(sw, sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500), "done", new Object[0]);
                 }
                 setVelocity(dir.getOffsetX() * speed, getVelocity().y, dir.getOffsetZ() * speed);
 
                 if (age % 20 == 0) flushJunk(sw);
-                if (issue != null && speed < 0.05 && age % 40 == 0) {
-                    Text msg = Text.translatable("tunnelcart." + issue, issueArgs);
-                    for (var p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500)) p.sendMessage(msg, true);
+                if (issue != null && speed < 0.05) {
+                    String key = issue + java.util.Arrays.toString(issueArgs);
+                    if (!key.equals(alertKey) || age - alertAge >= ALERT_TICKS) {
+                        alertKey = key;
+                        alertAge = age;
+                        alert(sw, sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500), issue, issueArgs);
+                    }
+                } else if (issue == null && alertKey != null) {
+                    alertKey = null;
+                    for (var p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500))
+                        p.networkHandler.sendPacket(new ClearTitleS2CPacket(true));
                 }
             }
         }
         super.tick();
+    }
+
+    // ------------------------------------------------------------ alerts
+    private static void alert(ServerWorld w, List<ServerPlayerEntity> players, String key, Object[] args) {
+        Formatting color;
+        SoundEvent sound;
+        float pitch = 1.0f;
+        String kind;
+        switch (key) {
+            case "done" -> { color = Formatting.GREEN; sound = SoundEvents.ENTITY_PLAYER_LEVELUP; kind = "done"; }
+            case "coord_ok" -> { color = Formatting.GREEN; sound = SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP; kind = "ok"; }
+            case "need_rail", "need_cobbled", "need_plain_rail", "need_brake" -> { color = Formatting.GOLD; sound = SoundEvents.BLOCK_BELL_USE; kind = "stop"; }
+            case "chunk" -> { color = Formatting.YELLOW; sound = SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP; pitch = 0.6f; kind = "stop"; }
+            case "blocked", "blocked_path" -> { color = Formatting.RED; sound = SoundEvents.ENTITY_VILLAGER_NO; pitch = 0.8f; kind = "stop"; }
+            default -> { color = Formatting.RED; sound = SoundEvents.ENTITY_VILLAGER_NO; kind = "error"; }
+        }
+        Text title = Text.translatable("tunnelcart.alert.title." + kind).formatted(color, Formatting.BOLD);
+        Text subtitle = Text.translatable("tunnelcart.alert." + key, args).formatted(color);
+        for (ServerPlayerEntity p : players) {
+            p.networkHandler.sendPacket(new TitleFadeS2CPacket(5, kind.equals("ok") ? 100 : ALERT_TICKS, 20));
+            p.networkHandler.sendPacket(new SubtitleS2CPacket(subtitle));
+            p.networkHandler.sendPacket(new TitleS2CPacket(title));
+            w.playSound(null, p.getBlockPos(), sound, SoundCategory.MASTER, 1.0f, pitch);
+        }
     }
 
     // ------------------------------------------------------------ detours around existing tracks

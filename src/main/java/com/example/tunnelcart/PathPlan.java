@@ -161,9 +161,10 @@ public final class PathPlan {
         if (sl == Slope.FLAT && !turnHere) {
             if (target) {
                 if (l2 > 0 && ((k >= l1 - BRAKE && k < l1) || (k > l1 && k <= l1 + BRAKE))) brake = true;
-                if (dy != 0) {                                    // before the climb / descent at the end
+                if (dy != 0) {                                    // before the climb / descent at the end, and after it
                     int s = l1 + l2 - (AFTER_CLIMB - 1) - Math.abs(dy);
                     if (k >= s - BRAKE && k < s) brake = true;
+                    if (k >= l1 + l2 - (AFTER_CLIMB - 1)) brake = true;
                 }
             }
             // a bypass over/under an old track: before its way out of the base level and before its way back

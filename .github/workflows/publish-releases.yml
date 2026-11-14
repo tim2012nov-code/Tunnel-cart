@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   publish-backfill:
+    if: github.event_name == 'workflow_dispatch'
     name: Build and publish v${{ matrix.version }}
     runs-on: ubuntu-latest
     strategy:
@@ -189,29 +190,34 @@ jobs:
             --title "Tunnel Cart v${RELEASE_VERSION}" \
             --notes-file release-notes.md
 
-  update-existing-release:
-    name: Complete the existing v2.0.0 release notes
+  localize-existing-releases:
+    name: Обновить описания опубликованных релизов на русском
     runs-on: ubuntu-latest
     steps:
-      - name: Update v2.0.0 notes
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply Russian release descriptions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          cat > release-notes.md <<'EOF'
-          ## Tunnel Cart 2.0.0
-
-          This release was published with its original JAR asset. The repository does not contain a detailed 2.0.0 change log, so no unverified feature list is attributed to this version.
-
-          **Minecraft:** 1.20.1 · **Loader:** Fabric
-          EOF
-          gh release edit v2.0.0 --repo "$GITHUB_REPOSITORY" \
-            --title "Tunnel Cart v2.0.0" \
-            --notes-file release-notes.md
+          set -euo pipefail
+          shopt -s nullglob
+          for file in release-notes/v*.md; do
+            version="${file#release-notes/v}"
+            version="${version%.md}"
+            if [ "$version" = "4.1.0" ]; then continue; fi
+            tag="v$version"
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "Tunnel Cart $version" --notes-file "$file"
+            fi
+          done
 
   publish-current:
     name: Publish the current version on future main updates
     needs: publish-backfill
+    if: always() && (needs.publish-backfill.result == 'success' || needs.publish-backfill.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -261,9 +267,13 @@ jobs:
         if: steps.current.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          gh release create "v${{ steps.current.outputs.version }}" "dist/tunnelcart-${{ steps.current.outputs.version }}.jar" \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Tunnel Cart v${{ steps.current.outputs.version }}" \
-            --generate-notes
+          set -euo pipefail
+          version="${{ steps.current.outputs.version }}"
+          notes_file="release-notes/v${version}.md"
+          if [ -f "$notes_file" ]; then
+            gh release create "v$version" "dist/tunnelcart-$version.jar" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Tunnel Cart v$version" --notes-file "$notes_file"
+          else
+            gh release create "v$version" "dist/tunnelcart-$version.jar" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Tunnel Cart v$version" --generate-notes
+          fi
