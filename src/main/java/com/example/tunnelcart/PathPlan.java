@@ -76,7 +76,7 @@ public final class PathPlan {
         } else if (a1 < 0) throw new IllegalArgumentException("coord_behind");
         int leg = l2 > 0 ? l2 : a1;
         if (dyy > 0 && leg < dyy + BRAKE + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
-        if (dyy < 0 && leg < -dyy + 1) throw new IllegalArgumentException("coord_short");
+        if (dyy < 0 && leg < -dyy + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
         if (a1 == 0 && l2 == 0) throw new IllegalArgumentException("coord_short");
         return new PathPlan(origin, h0, h1, true, a1, l2, dyy);
     }
@@ -113,8 +113,8 @@ public final class PathPlan {
             if (i >= s) return new int[]{i - s, 1};
             return new int[]{0, 0};
         }
-        int m = -dy, s = n - m;
-        if (i >= n) return new int[]{-m, 0};
+        int m = -dy, f = n - (AFTER_CLIMB - 1), s = f - m; // keep 11 straight rails after the descent
+        if (i >= f) return new int[]{-m, 0};
         if (i >= s) return new int[]{-1 - (i - s), 2};
         return new int[]{0, 0};
     }
@@ -184,8 +184,9 @@ public final class PathPlan {
         if (k < 1) return false;
         if (hasTurn()) {
             int d = k - (l1 + 1);
-            if (d == 0 || d == 16 || d == 32) return true;
+            if (d == 0 || d == 16 || d == 32 || k == l1 - 1) return true; // also accelerate before the turn
         }
+        if (node(k).slope == Slope.FLAT && node(k + 1).slope != Slope.FLAT) return true; // before a climb, descent or bypass
         if (node(k).slope != Slope.FLAT) {
             int r = 0;
             while (k - r - 1 >= 0 && node(k - r - 1).slope != Slope.FLAT) r++;
