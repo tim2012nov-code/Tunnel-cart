@@ -205,4 +205,33 @@ public final class PathPlan {
         }
         return false;
     }
+ 
+    /**
+     * Point `dist` blocks behind a cart at (px,py,pz), measured along the path through node centres.
+     * While the cart has entered a corner node but has not reached its centre yet, use the incoming
+     * direction. This keeps the trailing cart position continuous across node boundaries and turns.
+     * Returns {x, y, z}.
+     */
+    public static double[] pointBehind(PathPlan plan, int lastProg, double px, double py, double pz, double dist) {
+        Direction h0 = plan.heading();
+        Node cur = plan.node(lastProg);
+        double cx = cur.pos.getX() + 0.5, cz = cur.pos.getZ() + 0.5;
+        double din = (px - cx) * cur.in.getOffsetX() + (pz - cz) * cur.in.getOffsetZ();
+        double dout = (px - cx) * cur.out.getOffsetX() + (pz - cz) * cur.out.getOffsetZ();
+        // How far the cart is past the centre of its node along the path (negative: not there yet).
+        double d = cur.corner && din < 0 ? din : dout;
+        if (d >= dist) return new double[]{px - cur.out.getOffsetX() * dist, py, pz - cur.out.getOffsetZ() * dist};
+        double yOff = py - cur.pos.getY();
+        double back = dist - d;
+        int i = lastProg;
+        while (back > 1.0 && i > 0) { back -= 1.0; i--; }
+        Node a = plan.node(i);
+        double ax = a.pos.getX() + 0.5, az = a.pos.getZ() + 0.5, ay = a.pos.getY() + yOff;
+        if (i > 0) {
+            Node b = plan.node(i - 1);
+            double bx = b.pos.getX() + 0.5, bz = b.pos.getZ() + 0.5, by = b.pos.getY() + yOff;
+            return new double[]{ax + (bx - ax) * back, ay + (by - ay) * back, az + (bz - az) * back};
+        }
+        return new double[]{ax - h0.getOffsetX() * back, ay, az - h0.getOffsetZ() * back};
+    }
 }
