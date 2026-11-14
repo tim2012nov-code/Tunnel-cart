@@ -211,7 +211,7 @@ jobs:
           for file in release-notes/v*.md; do
             version="${file#release-notes/v}"
             version="${version%.md}"
-            if [ "$version" = "4.1.0" ]; then continue; fi
+            if [ "$version" = "4.1.0" ] || [ "$version" = "4.1.1" ]; then continue; fi
             tag="v$version"
             if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
               gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "Tunnel Cart $version" --notes-file "$file"
