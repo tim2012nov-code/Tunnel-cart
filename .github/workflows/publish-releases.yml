@@ -1,5 +1,9 @@
 name: Publish missing Tunnel Cart releases
 
+concurrency:
+  group: tunnel-cart-releases-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     branches:
@@ -271,6 +275,11 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ steps.current.outputs.version }}"
+          # A different push may have published this version after the initial check.
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$version was already published by another run; skipping."
+            exit 0
+          fi
           notes_file="release-notes/v${version}.md"
           if [ -f "$notes_file" ]; then
             gh release create "v$version" "dist/tunnelcart-$version.jar" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Tunnel Cart v$version" --notes-file "$notes_file"
