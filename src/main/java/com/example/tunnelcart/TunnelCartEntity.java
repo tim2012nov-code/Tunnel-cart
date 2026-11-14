@@ -431,32 +431,11 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         return true;
     }
 
-    /** Point `dist` blocks behind the cart measured along the built path (follows the turn, unlike a straight line). */
+    /** Point `dist` blocks behind the cart measured along the built path, continuously through node boundaries and turns. */
     public Vec3d pointBehind(double dist) {
-        Vec3d pos = getPos();
-        if (plan == null) return pos;
-        Direction h0 = plan.heading();
-        if (lastProg == 0) {
-            BlockPos o = plan.origin();
-            double along = (getX() - o.getX() - 0.5) * h0.getOffsetX() + (getZ() - o.getZ() - 0.5) * h0.getOffsetZ();
-            if (along <= 0.0) return pos.add(-h0.getOffsetX() * dist, 0, -h0.getOffsetZ() * dist);
-        }
-        PathPlan.Node cur = plan.node(lastProg);
-        double cx = cur.pos.getX() + 0.5, cz = cur.pos.getZ() + 0.5;
-        double d = (pos.x - cx) * cur.out.getOffsetX() + (pos.z - cz) * cur.out.getOffsetZ();
-        double yOff = pos.y - cur.pos.getY();
-        if (d >= dist) return pos.add(-cur.out.getOffsetX() * dist, 0, -cur.out.getOffsetZ() * dist);
-        double back = dist - Math.max(d, 0.0);
-        int i = lastProg;
-        while (back > 1.0 && i > 0) { back -= 1.0; i--; }
-        PathPlan.Node a = plan.node(i);
-        double ax = a.pos.getX() + 0.5, az = a.pos.getZ() + 0.5, ay = a.pos.getY() + yOff;
-        if (i > 0) {
-            PathPlan.Node b = plan.node(i - 1);
-            double bx = b.pos.getX() + 0.5, bz = b.pos.getZ() + 0.5, by = b.pos.getY() + yOff;
-            return new Vec3d(ax + (bx - ax) * back, ay + (by - ay) * back, az + (bz - az) * back);
-        }
-        return new Vec3d(ax - h0.getOffsetX() * back, ay, az - h0.getOffsetZ() * back);
+        if (plan == null) return getPos();
+        double[] p = PathPlan.pointBehind(plan, lastProg, getX(), getY(), getZ(), dist);
+        return new Vec3d(p[0], p[1], p[2]);
     }
 
     private boolean clear(ServerWorld w, BlockPos p) {
