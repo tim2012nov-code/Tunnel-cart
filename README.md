@@ -86,3 +86,7 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 * Torch layout for acceleration (always placed, button-independent; redstone block if the cart has no torches):
   * turn: before it the last rail + two more 16 apart; after it the first rail + two more 16 apart;
   * slope (climb, descent, bypass over/under an old track): before it the last rail + two more 16 apart; on the slope every 16th rail; after it the first rail + three more 16 apart.
+
+### 4.0.8
+* The torch on the last rail before a turn is no longer removed when the turn block is built (the 3x3 bore of the turn used to clear it).
+* Speed through a turn and its two slowing zones is capped at 7.5 blocks/s by the cart itself (independent of rail power and High-Speed Rail settings), so the cart cannot leave the curved rail at high speed.

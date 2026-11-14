@@ -37,6 +37,7 @@ import java.util.UUID;
 public class TunnelCartEntity extends ChestMinecartEntity {
     private static final TagKey<Block> C_ORES = TagKey.of(RegistryKeys.BLOCK, new Identifier("c", "ores"));
     private static final int FLAGS = Block.NOTIFY_LISTENERS;
+    private static final double TURN_SPEED = 0.375; // 7.5 blocks/s around a turn
     private static final int SLOPE_TORCH = 16;   // torch spacing
     private static final double SLOPE_SPEED = 0.5; // blocks/tick (10 bps) on and right before slopes
 
@@ -157,6 +158,9 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 for (int j = Math.max(0, lastProg); j <= Math.min(built, lastProg + perTick + 2); j++) {
                     if (plan.node(j).slope != PathPlan.Slope.FLAT) { max = Math.min(max, SLOPE_SPEED); break; }
                 }
+                // through the turn (and its slowing zones) never faster than a curved rail can take, whatever the power / HSR says
+                if (plan.hasTurn() && lastProg >= plan.turnIndex() - PathPlan.BRAKE && lastProg <= plan.turnIndex() + PathPlan.BRAKE)
+                    max = Math.min(max, TURN_SPEED);
                 int target = (int) Math.floor(prog) + Math.max(6, perTick * 3 + 3);
                 if (plan.hasTarget()) target = Math.min(target, plan.total());
                 int budget = perTick + 3;
@@ -313,6 +317,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         for (BlockPos p : boreOf(k)) {
             if (p.equals(c)) continue;
             if (nd.corner && p.equals(c.offset(nd.in, -1))) continue; // rail of the previous node
+            if (nd.corner && w.getBlockState(p).isOf(Blocks.REDSTONE_WALL_TORCH)) continue; // torch of the rail before the turn
             if (!clear(w, p)) return false;
         }
 
