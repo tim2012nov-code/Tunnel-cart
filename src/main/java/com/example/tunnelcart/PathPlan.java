@@ -76,7 +76,7 @@ public final class PathPlan {
         } else if (a1 < 0) throw new IllegalArgumentException("coord_behind");
         int leg = l2 > 0 ? l2 : a1;
         if (dyy > 0 && leg < dyy + BRAKE + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
-        if (dyy < 0 && leg < -dyy + 1) throw new IllegalArgumentException("coord_short");
+        if (dyy < 0 && leg < -dyy + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
         if (a1 == 0 && l2 == 0) throw new IllegalArgumentException("coord_short");
         return new PathPlan(origin, h0, h1, true, a1, l2, dyy);
     }
@@ -113,8 +113,8 @@ public final class PathPlan {
             if (i >= s) return new int[]{i - s, 1};
             return new int[]{0, 0};
         }
-        int m = -dy, s = n - m;
-        if (i >= n) return new int[]{-m, 0};
+        int m = -dy, f = n - (AFTER_CLIMB - 1), s = f - m;   // like a climb: straight rails after the descent
+        if (i >= f) return new int[]{-m, 0};
         if (i >= s) return new int[]{-1 - (i - s), 2};
         return new int[]{0, 0};
     }
@@ -176,22 +176,29 @@ public final class PathPlan {
     }
 
     /**
-     * Rails that always get a redstone torch (even with the torch button off):
-     * the first rail after a turn and two more 16 apart, every 8th rail of a slope,
-     * and the first rail after a slope plus one 16 further on (to accelerate again).
+     * Rails that always get a redstone torch (even with the torch button off), so the cart can accelerate again:
+     *  - turn: before it the last rail and two more 16 apart; after it the first rail and two more 16 apart;
+     *  - slope (climb, descent, bypass): before it the last rail and two more 16 apart; on it every 16th rail;
+     *    after it the first rail and three more 16 apart.
      */
     public boolean boost(int k) {
         if (k < 1) return false;
         if (hasTurn()) {
-            int d = k - (l1 + 1);
-            if (d == 0 || d == 16 || d == 32) return true;
+            int before = (l1 - 1) - k, after = k - (l1 + 1);
+            if (before == 0 || before == 16 || before == 32) return true;
+            if (after == 0 || after == 16 || after == 32) return true;
         }
-        if (node(k).slope != Slope.FLAT) {
+        Node nd = node(k);
+        if (nd.slope != Slope.FLAT) {
             int r = 0;
             while (k - r - 1 >= 0 && node(k - r - 1).slope != Slope.FLAT) r++;
-            return r % 8 == 0;
+            return r % 16 == 15;
         }
-        for (int back : new int[]{1, 17}) {
+        for (int off = 0; off <= 32; off += 16) {           // slope starts 1, 17 or 33 rails ahead
+            int t = k + 1 + off;
+            if (node(t).slope != Slope.FLAT && node(t - 1).slope == Slope.FLAT) return true;
+        }
+        for (int back = 1; back <= 49; back += 16) {        // slope ended 1, 17, 33 or 49 rails ago
             int t = k - back;
             if (t >= 0 && node(t).slope != Slope.FLAT && node(t + 1).slope == Slope.FLAT) return true;
         }

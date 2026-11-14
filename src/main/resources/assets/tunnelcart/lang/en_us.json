@@ -19,7 +19,7 @@
  "tunnelcart.done": "Tunnel Cart: destination reached",
  "tunnelcart.coord_same": "Tunnel Cart: target is the current position",
  "tunnelcart.coord_behind": "Tunnel Cart: target is behind (only ONE turn is allowed)",
- "tunnelcart.coord_short": "Tunnel Cart: too close for braking zones / turn / climb (turn legs and the last leg need 11+ blocks; climb needs height+21)",
+ "tunnelcart.coord_short": "Tunnel Cart: too close for braking zones / turn / climb (turn legs and the last leg need 11+ blocks; climb needs height+21, descent height+11)",
  "tunnelcart.coord_busy": "Tunnel Cart: wait until the cart passes the turn, or re-place it",
  "tunnelcart.need_plain_rail": "Tunnel Cart: out of plain rails (needed for the turn)",
  "tunnelcart.need_brake": "Tunnel Cart: out of cobblestone (slowing blocks)",

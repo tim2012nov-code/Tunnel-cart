@@ -46,7 +46,7 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 * **Redstone torches** – button "Torches: on/off" under the cart menu. When on, every 16th rail gets a redstone wall torch next to it (plus three extra torches after a turn: right after the turn and 16 and 32 blocks later); redstone blocks stay every 8th rail. Needs redstone torches in the cart.
 * **By coordinates** – button "By coordinates" opens a menu with X / Y / Z (Y empty = current level). The route is: straight along the cart's heading → **one** turn → straight to the target → climb/descent at the very end.
   * The turn is a plain curved rail (keep a few plain rails in the cart). Before the turn and after it there are 10 slowing blocks (cobblestone) under the rails.
-  * A climb is the last thing on the route: 10 slowing blocks before it, then 11 straight rails after it. A descent gets no slowing blocks.
+  * A climb is the last thing on the route: 10 slowing blocks before it, then 11 straight rails after it. A descent gets no slowing blocks, but also 11 straight rails after it.
   * Needs: both legs of a turn ≥ 11 blocks, the last leg ≥ height + 21 for a climb. Cobblestone must be in the cart for slowing blocks (it must NOT be listed in the High-Speed Rail config, so it stays slow).
 * **Existing tracks** – when the way ahead crosses an already built track, the route climbs over it (ramp up, flat part, ramp down). If the space above is occupied it goes under it instead.
 
@@ -77,3 +77,12 @@ Fabric-мод для Minecraft **1.20.1**. Вагонетка-проходчик
 * **Torches for acceleration even with the torch button off:** one on the first rail after a turn plus two more 16 blocks apart; on every slope (first rail and every 8th) and on the first rail after a slope plus one 16 further. If the cart has no torches, a redstone block is used instead (never in a slowing zone).
 * **A bypass over/under an old track is treated like a climb:** 10 slowing blocks (cobblestone) before its way up, and torches on the slopes (cobblestone must be in the cart).
 * The planner looks 34 nodes ahead (was 26) so the slowing zone before a bypass is normally not built yet when the bypass is planned.
+
+### 4.0.6
+* After a descent to the target depth there are now 11 straight rails (same as after a climb); descent needs depth+11 blocks of leg.
+* More torches for acceleration (always, button-independent): also on the last rail before a turn and on the last rail before every slope (climb, descent, bypass), besides those after a turn / on slopes / after slopes.
+
+### 4.0.7
+* Torch layout for acceleration (always placed, button-independent; redstone block if the cart has no torches):
+  * turn: before it the last rail + two more 16 apart; after it the first rail + two more 16 apart;
+  * slope (climb, descent, bypass over/under an old track): before it the last rail + two more 16 apart; on the slope every 16th rail; after it the first rail + three more 16 apart.
