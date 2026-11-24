@@ -28,12 +28,12 @@ public final class DetourPlanner {
     public enum Result { OK, CHUNK, BLOCKED }
 
     public static final int MAX_RAMP = 16;
-    public static final int GAP = 3;
-    public static final int GROUP_MAX = 600;
-    public static final int MERGE_DIST = 12;
-    private static final int OVER = 5;
-    private static final int UNDER = 7;
-    private static final int RAMP_TOP = 4;
+    public static final int GAP = 3;         // gap (no rails) that still counts as the same foreign track
+    public static final int GROUP_MAX = 600; // sanity limit for one platform planned in one go
+    public static final int MERGE_DIST = 12; // closer than this behind a bypass -> lengthen it instead of a new one
+    private static final int OVER = 5;       // platform level above the highest foreign rail
+    private static final int UNDER = 7;      // platform level under the lowest foreign rail
+    private static final int RAMP_TOP = 4;   // bore height on ramps
 
     private int scanned = 0;
     private BlockPos found = null;
@@ -41,23 +41,27 @@ public final class DetourPlanner {
     public void reset(int s) { scanned = s; found = null; }
     public BlockPos found() { return found; }
 
+    // ------------------------------------------------------------------ scanning
+    /** Call before node n is built. OK: build it. CHUNK: wait. BLOCKED: no way around, see found(). */
     public Result ensure(PathPlan plan, Terrain t, int n) {
         if (scanned < n - 1) scanned = n - 1;
         int y0 = plan.origin().getY();
-        int minLook = MAX_RAMP + plan.brake() + 1;
+        int minLook = MAX_RAMP + plan.brake() + 1;   // longest ramp + slowing zone before it + 1: the cart waits until this much is scanned
         int look = minLook + 8;
         int need = plan.hasTarget() ? Math.min(n + minLook, plan.total()) : n + minLook;
         while (scanned < n + look) {
             int j = scanned + 1;
             if (plan.hasTarget() && j > plan.total()) { scanned = j; break; }
-            if (!loaded(plan, t, j)) break;
+            if (!loaded(plan, t, j)) break;                 // never mark an unknown column as checked
 
             PathPlan.Detour d = detourAt(plan, j);
             if (d != null) {
+                // a column of an already planned bypass: it may have been unknown (not loaded) when it was planned
                 List<BlockPos> hit = conflicts(plan, t, j, y0 + d.at(j)[0], RAMP_TOP);
                 if (hit.isEmpty()) { scanned = j; continue; }
                 List<PathPlan.Detour> ds = plan.detours();
                 if (d != ds.get(ds.size() - 1) || j < d.rampStart()) { found = hit.get(0); return Result.BLOCKED; }
+                // the foreign track goes on beyond our platform: lengthen the platform
                 int[] g = group(plan, t, j, y0, hit);
                 if (!extend(plan, t, d, n, g[0], g[1], g[2], y0)) { found = hit.get(0); return Result.BLOCKED; }
                 scanned = Math.max(j, known(plan, t, j, d.end()));
@@ -67,7 +71,7 @@ public final class DetourPlanner {
             List<BlockPos> hit = conflicts(plan, t, j, y0, plan.top(j));
             if (hit.isEmpty()) { scanned = j; continue; }
 
-            int[] g = group(plan, t, j, y0, hit);
+            int[] g = group(plan, t, j, y0, hit);     // the whole stretch of the foreign track (may run parallel to us)
             if (!planDetour(plan, t, n, j, g[0], g[1], g[2], y0)) {
                 found = hit.get(0);
                 return Result.BLOCKED;
@@ -83,11 +87,13 @@ public final class DetourPlanner {
         return null;
     }
 
+    /** Highest index in [from, to] such that every column from..index is loaded (the rest is still unknown). */
     private static int known(PathPlan plan, Terrain t, int from, int to) {
         for (int i = from; i <= to; i++) if (!loaded(plan, t, i)) return i - 1;
         return to;
     }
 
+    /** Extent of the foreign track that starts at column j: {last column, highest rail y, lowest rail y}. */
     private int[] group(PathPlan plan, Terrain t, int j, int y0, List<BlockPos> first) {
         int e = j, gap = 0;
         int top = Integer.MIN_VALUE, bot = Integer.MAX_VALUE;
@@ -96,7 +102,7 @@ public final class DetourPlanner {
             if (plan.hasTarget() && q > plan.total()) break;
             if (!plan.baseFlatAt(q) || !loaded(plan, t, q)) break;
             if (detourAt(plan, q) != null && q < lastRamp(plan)) break;
-            List<BlockPos> more = conflicts(plan, t, q, y0, plan.top(q));
+            List<BlockPos> more = conflicts(plan, t, q, y0, plan.top(q));   // the track at its own level
             PathPlan.Detour d = detourAt(plan, q);
             if (d != null) more.addAll(conflicts(plan, t, q, y0 + d.at(q)[0], RAMP_TOP));
             if (more.isEmpty()) { if (++gap > GAP) break; continue; }
@@ -106,6 +112,7 @@ public final class DetourPlanner {
         return new int[]{e, top, bot};
     }
 
+    /** First index of the way back of the last bypass (columns before it can not be passed through). */
     private static int lastRamp(PathPlan plan) {
         List<PathPlan.Detour> ds = plan.detours();
         return ds.isEmpty() ? Integer.MAX_VALUE : ds.get(ds.size() - 1).rampStart();
@@ -118,13 +125,14 @@ public final class DetourPlanner {
         return true;
     }
 
+    // ------------------------------------------------------------------ planning
     private boolean planDetour(PathPlan plan, Terrain t, int n, int c, int e, int top, int bot, int y0) {
         List<PathPlan.Detour> ds = plan.detours();
         PathPlan.Detour last = ds.isEmpty() ? null : ds.get(ds.size() - 1);
         boolean close = last != null && c - last.end() <= MERGE_DIST;
         if (close && extend(plan, t, last, n, e, top, bot, y0)) return true;
 
-        for (int sigma = 1; sigma >= -1; sigma -= 2) {
+        for (int sigma = 1; sigma >= -1; sigma -= 2) {          // above first, then below
             int t0 = top, b0 = bot, e0 = e;
             for (int attempt = 0; attempt < 12; attempt++) {
                 int yP = sigma > 0 ? t0 + OVER : b0 - UNDER;
@@ -137,21 +145,25 @@ public final class DetourPlanner {
                 if (!plan.windowFlat(d.start, d.end())) break;
                 int bad = -1;
                 List<BlockPos> badHit = null;
+                // the neighbours of a bypass get 5 blocks of headroom as well (not yet built ones only)
                 for (int i = Math.max(n, d.start - 1); i <= d.end() + 1; i++) {
                     if (plan.hasTarget() && i > plan.total()) break;
-                    if (!loaded(plan, t, i)) continue;
+                    if (!loaded(plan, t, i)) continue;      // unknown column: checked later by the scan
                     List<BlockPos> h = conflicts(plan, t, i, levelAt(d, i, y0), RAMP_TOP);
                     if (!h.isEmpty()) { bad = i; badHit = h; break; }
                 }
                 if (bad < 0) { plan.addDetour(d); return true; }
+                // a foreign rail inside the way back down (another track close behind the first one):
+                // the platform has to reach over it as well
                 if (bad < d.rampStart()) break;
-                e0 = Math.max(e0, bad);
+                e0 = Math.max(e0, bad);   // (also when the neighbour after the bypass is the culprit)
                 for (BlockPos p : badHit) { t0 = Math.max(t0, p.getY()); b0 = Math.min(b0, p.getY()); }
             }
         }
         return !close && last != null && extend(plan, t, last, n, e, top, bot, y0);
     }
 
+    /** Lengthen the platform of the last bypass (its way back has not been built yet). */
     private boolean extend(PathPlan plan, Terrain t, PathPlan.Detour last, int n, int e, int top, int bot, int y0) {
         if (n > last.rampStart()) return false;
         int yP = y0 + last.sigma * last.m;
@@ -173,6 +185,8 @@ public final class DetourPlanner {
         return (i < d.start || i > d.end()) ? y0 : y0 + d.at(i)[0];
     }
 
+    // ------------------------------------------------------------------ obstacles
+    /** Foreign powered rails the node at level yi (bore height top) would destroy. */
     List<BlockPos> conflicts(PathPlan plan, Terrain t, int i, int yi, int top) {
         List<BlockPos> out = new ArrayList<>();
         PathPlan.Node nd = plan.node(i);
@@ -186,11 +200,13 @@ public final class DetourPlanner {
             for (int a = -1; a <= 1; a++)
                 column(plan, t, i, cx + side.getOffsetX() * a, cz + side.getOffsetZ() * a, yi, top, out);
         }
+        // the block under our rail is replaced too
         check(plan, t, i, cx, yi - 1, cz, out);
         return out;
     }
 
     private void column(PathPlan plan, Terrain t, int i, int x, int z, int yi, int top, List<BlockPos> out) {
+        // bore (yi .. yi+top) plus the roof layer: the rail standing there loses its support block
         for (int y = yi; y <= yi + top + 1; y++) check(plan, t, i, x, y, z, out);
     }
 

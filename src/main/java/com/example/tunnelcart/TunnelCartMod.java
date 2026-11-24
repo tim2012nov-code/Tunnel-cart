@@ -43,7 +43,7 @@ public class TunnelCartMod implements ModInitializer {
     @Override
     public void onInitialize() {
         TunnelCartConfig.load();
-        // Speed cap for ordinary minecarts; 300 blocks/s disables this cap. It layers over High-Speed Rail.
+        // speed limit for ordinary minecarts (slider in the Mod Menu screen; 300 = off). Works as a cap on top of High-Speed Rail.
         ServerTickEvents.END_WORLD_TICK.register(world -> {
             if (!TunnelCartConfig.vanillaLimited()) return;
             double cap = TunnelCartConfig.vanillaSpeed() / 20.0;

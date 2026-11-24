@@ -29,10 +29,10 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
@@ -57,9 +57,9 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     private boolean torches = false;
     private int tx, ty, tz;
     private UUID extUuid = null;
-    private static final int ALERT_STAY = 100; // an alert stays on screen for 5 seconds
-    private static final int ALERT_REPEAT = 600; // a persistent problem is announced again every 30 seconds
-    private String alertKey = null;
+    private static final int ALERT_STAY = 100;      // an alert stays on screen for 5 seconds
+    private static final int ALERT_REPEAT = 600;    // a problem that stays is announced again every 30 seconds
+    private String alertKey = null;               // what is on screen now (null = nothing of ours)
     private int alertAge = 0;
     private String issue = null;
     private Object[] issueArgs = new Object[0];
@@ -201,8 +201,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 if (issue != null && speed < 0.05) {
                     String key = issue + java.util.Arrays.toString(issueArgs);
                     if (!key.equals(alertKey) || age - alertAge >= ALERT_REPEAT) {
-                        alertKey = key;
-                        alertAge = age;
+                        alertKey = key; alertAge = age;
                         alert(sw, sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500), issue, issueArgs);
                     }
                 } else if (issue == null && alertKey != null) {          // the problem is gone: take the text off the screen
@@ -218,24 +217,26 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     }
 
     // ------------------------------------------------------------ alerts
+    /**
+     * Big coloured text in the middle of the screen (title + subtitle) with a sound, kept for 5 seconds.
+     * A title is not touched by other mods' action-bar overlays (e.g. a speed display).
+     * `key` is an issue / result name: lang keys tunnelcart.alert.<key> (subtitle) and tunnelcart.alert.title.<kind>.
+     */
     private static void alert(ServerWorld w, List<ServerPlayerEntity> players, String key, Object[] args) {
-        Formatting color;
-        SoundEvent sound;
-        float pitch = 1.0f;
-        String kind;
+        Formatting color; SoundEvent sound; float pitch = 1.0f; String kind;
         switch (key) {
             case "done" -> { color = Formatting.GREEN; sound = SoundEvents.ENTITY_PLAYER_LEVELUP; kind = "done"; }
             case "coord_ok" -> { color = Formatting.GREEN; sound = SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP; kind = "ok"; }
             case "need_rail", "need_cobbled", "need_plain_rail", "need_brake" -> { color = Formatting.GOLD; sound = SoundEvents.BLOCK_BELL_USE; kind = "stop"; }
             case "chunk" -> { color = Formatting.YELLOW; sound = SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP; pitch = 0.6f; kind = "stop"; }
             case "blocked", "blocked_path" -> { color = Formatting.RED; sound = SoundEvents.ENTITY_VILLAGER_NO; pitch = 0.8f; kind = "stop"; }
-            default -> { color = Formatting.RED; sound = SoundEvents.ENTITY_VILLAGER_NO; kind = "error"; }
+            default -> { color = Formatting.RED; sound = SoundEvents.ENTITY_VILLAGER_NO; kind = "error"; }   // coord_* errors
         }
         Text title = Text.translatable("tunnelcart.alert.title." + kind).formatted(color, Formatting.BOLD);
-        Text subtitle = Text.translatable("tunnelcart.alert." + key, args).formatted(color);
+        Text sub = Text.translatable("tunnelcart.alert." + key, args).formatted(color);
         for (ServerPlayerEntity p : players) {
             p.networkHandler.sendPacket(new TitleFadeS2CPacket(5, ALERT_STAY, 20));
-            p.networkHandler.sendPacket(new SubtitleS2CPacket(subtitle));
+            p.networkHandler.sendPacket(new SubtitleS2CPacket(sub));
             p.networkHandler.sendPacket(new TitleS2CPacket(title));
             w.playSound(null, p.getBlockPos(), sound, SoundCategory.MASTER, 1.0f, pitch);
         }
@@ -441,11 +442,11 @@ public class TunnelCartEntity extends ChestMinecartEntity {
         return true;
     }
 
-    /** Point `dist` blocks behind the cart measured along the built path, continuously through node boundaries and turns. */
+    /** Point `dist` blocks behind the cart measured along the built path (follows turns and slopes). */
     public Vec3d pointBehind(double dist) {
         if (plan == null) return getPos();
-        double[] p = PathPlan.pointBehind(plan, lastProg, getX(), getY(), getZ(), dist);
-        return new Vec3d(p[0], p[1], p[2]);
+        double[] r = PathPlan.pointBehind(plan, lastProg, getX(), getY(), getZ(), dist);
+        return new Vec3d(r[0], r[1], r[2]);
     }
 
     private boolean clear(ServerWorld w, BlockPos p) {

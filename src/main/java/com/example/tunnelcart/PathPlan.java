@@ -171,12 +171,13 @@ public final class PathPlan {
         if (sl == Slope.FLAT && !turnHere) {
             if (target) {
                 if (l2 > 0 && ((k >= l1 - brakeLen && k < l1) || (k > l1 && k <= l1 + brakeLen))) brake = true;
-                if (dy != 0) {
+                if (dy != 0) {                                    // before the climb / descent at the end, and after it
                     int s = l1 + l2 - (AFTER_CLIMB - 1) - Math.abs(dy);
                     if (k >= s - brakeLen && k < s) brake = true;
                     if (k >= l1 + l2 - (AFTER_CLIMB - 1)) brake = true;
                 }
             }
+            // a bypass over/under an old track: before its way out of the base level and before its way back
             for (Detour d : detours) {
                 if (k >= d.start - brakeLen && k < d.start) brake = true;
                 if (k >= d.rampStart() - brakeLen && k < d.rampStart()) brake = true;
@@ -204,11 +205,11 @@ public final class PathPlan {
             while (k - r - 1 >= 0 && node(k - r - 1).slope != Slope.FLAT) r++;
             return r % 16 == 15;
         }
-        for (int off = 0; off <= 32; off += 16) {
+        for (int off = 0; off <= 32; off += 16) {           // slope starts 1, 17 or 33 rails ahead
             int t = k + 1 + off;
             if (node(t).slope != Slope.FLAT && node(t - 1).slope == Slope.FLAT) return true;
         }
-        for (int back = 1; back <= 49; back += 16) {
+        for (int back = 1; back <= 49; back += 16) {        // slope ended 1, 17, 33 or 49 rails ago
             int t = k - back;
             if (t >= 0 && node(t).slope != Slope.FLAT && node(t + 1).slope == Slope.FLAT) return true;
         }
@@ -231,7 +232,7 @@ public final class PathPlan {
     }
 
     /**
-     * Point dist blocks behind a cart at (px,py,pz) measured along the path through the node centres
+     * Point `dist` blocks behind a cart at (px,py,pz) measured along the path through the node centres
      * (so it follows a turn and a slope). lastProg = index of the node the cart is in. Result: {x, y, z}.
      */
     public static double[] pointBehind(PathPlan plan, int lastProg, double px, double py, double pz, double dist) {
@@ -239,9 +240,9 @@ public final class PathPlan {
         double cx = cur.pos.getX() + 0.5, cz = cur.pos.getZ() + 0.5;
         double din = (px - cx) * cur.in.getOffsetX() + (pz - cz) * cur.in.getOffsetZ();
         double dout = (px - cx) * cur.out.getOffsetX() + (pz - cz) * cur.out.getOffsetZ();
-        double d = cur.corner && din < 0 ? din : dout;
-        double u = lastProg + d;
-        double above = py - plan.pathAt(u)[1];
+        double d = cur.corner && din < 0 ? din : dout;   // how far the cart is past the centre of its node (negative: not there yet)
+        double u = lastProg + d;                         // where the cart is along the path
+        double above = py - plan.pathAt(u)[1];           // its height above the rail
         double[] t = plan.pathAt(u - dist);
         return new double[]{t[0], t[1] + above, t[2]};
     }

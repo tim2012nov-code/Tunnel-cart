@@ -1,5 +1,6 @@
 package com.example.tunnelcart.client;
 
+import com.example.tunnelcart.HsrConfig;
 import com.example.tunnelcart.TunnelCartConfig;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -22,36 +23,64 @@ public class ConfigScreen extends Screen {
         this.parent = parent;
     }
 
+    private int top() { return height / 2 - 78; }
+
     @Override
     protected void init() {
         int w = 260, x = width / 2 - w / 2;
-        addDrawableChild(new SpeedSlider(x, height / 2 - 52, w, 20, Text.translatable("tunnelcart.cfg.tunnel"), tunnel, v -> tunnel = v));
-        addDrawableChild(new SpeedSlider(x, height / 2 + 14, w, 20, Text.translatable("tunnelcart.cfg.vanilla"), vanilla, v -> vanilla = v));
-        addDrawableChild(ButtonWidget.builder(ScreenTexts.DONE, b -> close()).dimensions(width / 2 - 100, height / 2 + 70, 200, 20).build());
+        addDrawableChild(new SpeedSlider(x, top(), w, 20, Text.translatable("tunnelcart.cfg.tunnel"), tunnel, v -> tunnel = v));
+        addDrawableChild(new SpeedSlider(x, top() + 84, w, 20, Text.translatable("tunnelcart.cfg.vanilla"), vanilla, v -> vanilla = v));
+        addDrawableChild(ButtonWidget.builder(ScreenTexts.DONE, b -> close()).dimensions(width / 2 - 100, top() + 134, 200, 20).build());
     }
+
+    private static int hsrTarget(double bps) { return Math.max(1, (int) Math.round(bps)); }
 
     @Override
     public void close() {
         TunnelCartConfig.set(tunnel, vanilla);
         TunnelCartConfig.save();
+        // the same speed goes into the config of High-Speed Rail (blocks that are at the top speed there)
+        if (HsrConfig.present()) {
+            boolean restart = false;
+            try {
+                if (HsrConfig.setFastSpeed(hsrTarget(TunnelCartConfig.buildSpeed()))) restart = !HsrConfig.reload();
+            } catch (Exception e) {
+                restart = true;
+            }
+            if (restart) { client.setScreen(new RestartNoticeScreen(parent)); return; }
+        }
         client.setScreen(parent);
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         renderBackground(ctx);
-        ctx.drawCenteredTextWithShadow(textRenderer, title, width / 2, height / 2 - 90, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(textRenderer, title, width / 2, top() - 20, 0xFFFFFF);
         super.render(ctx, mouseX, mouseY, delta);
-        int cy = height / 2 - 52 + 24;
+        int y = top() + 24, cx = width / 2;
         ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.translatable("tunnelcart.cfg.brake", TunnelCartConfig.brakeFor(tunnel)).formatted(Formatting.GRAY), width / 2, cy, 0xAAAAAA);
+                Text.translatable("tunnelcart.cfg.brake", TunnelCartConfig.brakeFor(tunnel)).formatted(Formatting.GRAY), cx, y, 0xAAAAAA);
+        y += 12;
         if (tunnel > TunnelCartConfig.RECOMMENDED_MAX + 1e-9) {
             ctx.drawCenteredTextWithShadow(textRenderer,
-                    Text.translatable("tunnelcart.cfg.warn", (int) TunnelCartConfig.RECOMMENDED_MAX).formatted(Formatting.RED, Formatting.BOLD),
-                    width / 2, cy + 12, 0xFF5555);
+                    Text.translatable("tunnelcart.cfg.warn", (int) TunnelCartConfig.RECOMMENDED_MAX).formatted(Formatting.RED, Formatting.BOLD), cx, y, 0xFF5555);
+            y += 12;
+        }
+        if (HsrConfig.present()) {
+            int now = HsrConfig.fastSpeed();
+            if (now != hsrTarget(tunnel)) {
+                ctx.drawCenteredTextWithShadow(textRenderer,
+                        Text.translatable("tunnelcart.cfg.hsr_warn", now, hsrTarget(tunnel)).formatted(Formatting.GOLD), cx, y, 0xFFAA00);
+            } else {
+                ctx.drawCenteredTextWithShadow(textRenderer,
+                        Text.translatable("tunnelcart.cfg.hsr", now).formatted(Formatting.GRAY), cx, y, 0xAAAAAA);
+            }
+        } else {
+            ctx.drawCenteredTextWithShadow(textRenderer,
+                    Text.translatable("tunnelcart.cfg.hsr_missing").formatted(Formatting.GRAY), cx, y, 0xAAAAAA);
         }
         ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.translatable("tunnelcart.cfg.vanilla_hint").formatted(Formatting.GRAY), width / 2, height / 2 + 14 + 24, 0xAAAAAA);
+                Text.translatable("tunnelcart.cfg.vanilla_hint").formatted(Formatting.GRAY), cx, top() + 84 + 24, 0xAAAAAA);
     }
 
     /** Slider 0.1 .. 300 b/s: the left half is 0.1 .. 75, the right half 75 .. 300. */
