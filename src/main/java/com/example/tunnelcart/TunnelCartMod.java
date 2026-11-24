@@ -1,11 +1,14 @@
 package com.example.tunnelcart;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.vehicle.AbstractMinecartEntity;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroups;
@@ -39,6 +42,18 @@ public class TunnelCartMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        TunnelCartConfig.load();
+        // Speed cap for ordinary minecarts; 300 blocks/s disables this cap. It layers over High-Speed Rail.
+        ServerTickEvents.END_WORLD_TICK.register(world -> {
+            if (!TunnelCartConfig.vanillaLimited()) return;
+            double cap = TunnelCartConfig.vanillaSpeed() / 20.0;
+            for (Entity e : world.iterateEntities()) {
+                if (!(e instanceof AbstractMinecartEntity m) || e instanceof TunnelCartEntity || e instanceof ExtensionCartEntity) continue;
+                Vec3d v = m.getVelocity();
+                double h = Math.hypot(v.x, v.z);
+                if (h > cap) m.setVelocity(v.x * cap / h, v.y, v.z * cap / h);
+            }
+        });
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(e -> { e.add(TUNNEL_CART_ITEM); e.add(EXTENSION_CART_ITEM); });
         ServerPlayNetworking.registerGlobalReceiver(COORD_PACKET, (server, player, handler, buf, sender) -> {
             int id = buf.readInt(), x = buf.readInt(), y = buf.readInt(), z = buf.readInt();

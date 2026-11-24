@@ -4,12 +4,15 @@ plugins {
 version = project.mod_version
 group = 'com.example'
 base { archivesName = 'tunnelcart' }
-repositories {}
+repositories {
+    maven { url = 'https://maven.terraformersmc.com/releases/' }
+}
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modCompileOnly "com.terraformersmc:modmenu:7.2.2"
 }
 processResources {
     inputs.property "version", project.version

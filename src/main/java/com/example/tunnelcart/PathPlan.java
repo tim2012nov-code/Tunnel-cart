@@ -12,7 +12,7 @@ import java.util.List;
  * Straight mode: endless line. Target mode: leg 1, ONE turn, leg 2, and the climb/descent at the very end.
  */
 public final class PathPlan {
-    public static final int BRAKE = 15;        // slowing blocks before a turn / after a turn / before every slope (climb, descent, bypass)
+    public static final int DEFAULT_BRAKE = 15; // slowing blocks before a turn / after a turn / before every slope (climb, descent, bypass) at 75 b/s
     public static final int AFTER_CLIMB = 11;  // straight rails after the climb
 
     public enum Slope { FLAT, UP, DOWN }
@@ -50,6 +50,7 @@ public final class PathPlan {
     private final boolean target;
     private final int l1, l2, dy;
     private final List<Detour> detours = new ArrayList<>();
+    private int brakeLen = DEFAULT_BRAKE;   // length of every slowing zone (depends on the cart speed)
 
     private PathPlan(BlockPos origin, Direction h0, Direction h1, boolean target, int l1, int l2, int dy) {
         this.origin = origin.toImmutable(); this.h0 = h0; this.h1 = h1; this.target = target;
@@ -62,6 +63,11 @@ public final class PathPlan {
 
     /** @throws IllegalArgumentException with a translation key suffix (tunnelcart.<message>) */
     public static PathPlan toTarget(BlockPos origin, Direction h0, int tx, int ty, int tz) {
+        return toTarget(origin, h0, tx, ty, tz, DEFAULT_BRAKE);
+    }
+
+    /** @param brake length of the slowing zones (decides the minimum lengths of the legs) */
+    public static PathPlan toTarget(BlockPos origin, Direction h0, int tx, int ty, int tz, int brake) {
         int dx = tx - origin.getX(), dz = tz - origin.getZ(), dyy = ty - origin.getY();
         int a1 = dx * h0.getOffsetX() + dz * h0.getOffsetZ();
         int lat = h0.getAxis() == Direction.Axis.X ? dz : dx;
@@ -72,13 +78,15 @@ public final class PathPlan {
             h1 = h0.getAxis() == Direction.Axis.X ? (dz > 0 ? Direction.SOUTH : Direction.NORTH)
                                                   : (dx > 0 ? Direction.EAST : Direction.WEST);
             if (a1 < 0) throw new IllegalArgumentException("coord_behind");
-            if (a1 < BRAKE + 1 || l2 < BRAKE + 1) throw new IllegalArgumentException("coord_short");
+            if (a1 < brake + 1 || l2 < brake + 1) throw new IllegalArgumentException("coord_short");
         } else if (a1 < 0) throw new IllegalArgumentException("coord_behind");
         int leg = l2 > 0 ? l2 : a1;
-        if (dyy > 0 && leg < dyy + BRAKE + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
-        if (dyy < 0 && leg < -dyy + BRAKE + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
+        if (dyy > 0 && leg < dyy + brake + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
+        if (dyy < 0 && leg < -dyy + brake + AFTER_CLIMB) throw new IllegalArgumentException("coord_short");
         if (a1 == 0 && l2 == 0) throw new IllegalArgumentException("coord_short");
-        return new PathPlan(origin, h0, h1, true, a1, l2, dyy);
+        PathPlan pl = new PathPlan(origin, h0, h1, true, a1, l2, dyy);
+        pl.brakeLen = brake;
+        return pl;
     }
 
     // ---------------------------------------------------------------- queries
@@ -90,6 +98,8 @@ public final class PathPlan {
     public int total() { return target ? l1 + l2 : Integer.MAX_VALUE; }
     public List<Detour> detours() { return detours; }
     public int dy() { return dy; }
+    public int brake() { return brakeLen; }
+    public void setBrake(int b) { brakeLen = Math.max(1, b); }
 
     public void addDetour(Detour d) { detours.add(d); }
     public boolean inDetour(int i) {
@@ -160,17 +170,16 @@ public final class PathPlan {
         boolean brake = false;
         if (sl == Slope.FLAT && !turnHere) {
             if (target) {
-                if (l2 > 0 && ((k >= l1 - BRAKE && k < l1) || (k > l1 && k <= l1 + BRAKE))) brake = true;
-                if (dy != 0) {                                    // before the climb / descent at the end, and after it
+                if (l2 > 0 && ((k >= l1 - brakeLen && k < l1) || (k > l1 && k <= l1 + brakeLen))) brake = true;
+                if (dy != 0) {
                     int s = l1 + l2 - (AFTER_CLIMB - 1) - Math.abs(dy);
-                    if (k >= s - BRAKE && k < s) brake = true;
+                    if (k >= s - brakeLen && k < s) brake = true;
                     if (k >= l1 + l2 - (AFTER_CLIMB - 1)) brake = true;
                 }
             }
-            // a bypass over/under an old track: before its way out of the base level and before its way back
             for (Detour d : detours) {
-                if (k >= d.start - BRAKE && k < d.start) brake = true;
-                if (k >= d.rampStart() - BRAKE && k < d.rampStart()) brake = true;
+                if (k >= d.start - brakeLen && k < d.start) brake = true;
+                if (k >= d.rampStart() - brakeLen && k < d.rampStart()) brake = true;
             }
         }
         return new Node(c.up(v[0]), in, out, turnHere, brake, sl);
@@ -195,43 +204,45 @@ public final class PathPlan {
             while (k - r - 1 >= 0 && node(k - r - 1).slope != Slope.FLAT) r++;
             return r % 16 == 15;
         }
-        for (int off = 0; off <= 32; off += 16) {           // slope starts 1, 17 or 33 rails ahead
+        for (int off = 0; off <= 32; off += 16) {
             int t = k + 1 + off;
             if (node(t).slope != Slope.FLAT && node(t - 1).slope == Slope.FLAT) return true;
         }
-        for (int back = 1; back <= 49; back += 16) {        // slope ended 1, 17, 33 or 49 rails ago
+        for (int back = 1; back <= 49; back += 16) {
             int t = k - back;
             if (t >= 0 && node(t).slope != Slope.FLAT && node(t + 1).slope == Slope.FLAT) return true;
         }
         return false;
     }
- 
+
+    /** Point of the path (through the node centres) at path coordinate u (node units): {x, y, z}. */
+    private double[] pathAt(double u) {
+        if (u <= 0) {
+            Node n0 = node(0);
+            return new double[]{n0.pos.getX() + 0.5 + h0.getOffsetX() * u, n0.pos.getY(), n0.pos.getZ() + 0.5 + h0.getOffsetZ() * u};
+        }
+        int i = (int) Math.floor(u);
+        double f = u - i;
+        Node a = node(i), b = node(i + 1);
+        return new double[]{
+                a.pos.getX() + 0.5 + (b.pos.getX() - a.pos.getX()) * f,
+                a.pos.getY() + (b.pos.getY() - a.pos.getY()) * f,
+                a.pos.getZ() + 0.5 + (b.pos.getZ() - a.pos.getZ()) * f};
+    }
+
     /**
-     * Point `dist` blocks behind a cart at (px,py,pz), measured along the path through node centres.
-     * While the cart has entered a corner node but has not reached its centre yet, use the incoming
-     * direction. This keeps the trailing cart position continuous across node boundaries and turns.
-     * Returns {x, y, z}.
+     * Point dist blocks behind a cart at (px,py,pz) measured along the path through the node centres
+     * (so it follows a turn and a slope). lastProg = index of the node the cart is in. Result: {x, y, z}.
      */
     public static double[] pointBehind(PathPlan plan, int lastProg, double px, double py, double pz, double dist) {
-        Direction h0 = plan.heading();
         Node cur = plan.node(lastProg);
         double cx = cur.pos.getX() + 0.5, cz = cur.pos.getZ() + 0.5;
         double din = (px - cx) * cur.in.getOffsetX() + (pz - cz) * cur.in.getOffsetZ();
         double dout = (px - cx) * cur.out.getOffsetX() + (pz - cz) * cur.out.getOffsetZ();
-        // How far the cart is past the centre of its node along the path (negative: not there yet).
         double d = cur.corner && din < 0 ? din : dout;
-        if (d >= dist) return new double[]{px - cur.out.getOffsetX() * dist, py, pz - cur.out.getOffsetZ() * dist};
-        double yOff = py - cur.pos.getY();
-        double back = dist - d;
-        int i = lastProg;
-        while (back > 1.0 && i > 0) { back -= 1.0; i--; }
-        Node a = plan.node(i);
-        double ax = a.pos.getX() + 0.5, az = a.pos.getZ() + 0.5, ay = a.pos.getY() + yOff;
-        if (i > 0) {
-            Node b = plan.node(i - 1);
-            double bx = b.pos.getX() + 0.5, bz = b.pos.getZ() + 0.5, by = b.pos.getY() + yOff;
-            return new double[]{ax + (bx - ax) * back, ay + (by - ay) * back, az + (bz - az) * back};
-        }
-        return new double[]{ax - h0.getOffsetX() * back, ay, az - h0.getOffsetZ() * back};
+        double u = lastProg + d;
+        double above = py - plan.pathAt(u)[1];
+        double[] t = plan.pathAt(u - dist);
+        return new double[]{t[0], t[1] + above, t[2]};
     }
 }

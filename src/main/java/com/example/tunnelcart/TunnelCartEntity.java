@@ -104,7 +104,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             if (plan.hasTurn() && built > plan.turnIndex() && lastProg <= plan.turnIndex()) err = "coord_busy";
             else if (front.slope != PathPlan.Slope.FLAT) err = "coord_busy";
             else {
-                PathPlan np = PathPlan.toTarget(front.pos, front.out, x, y != null ? y : front.pos.getY(), z);
+                PathPlan np = PathPlan.toTarget(front.pos, front.out, x, y != null ? y : front.pos.getY(), z, TunnelCartConfig.brake());
                 plan = np; built = 0; lastProg = 0; planner.reset(0);
                 tx = x; ty = np.origin().getY() + np.dy(); tz = z;
                 running = true;
@@ -113,7 +113,8 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             err = ex.getMessage();
         }
         if (player instanceof ServerPlayerEntity sp && getWorld() instanceof ServerWorld sw)
-            alert(sw, java.util.List.of(sp), err != null ? err : "coord_ok", new Object[0]);
+            alert(sw, java.util.List.of(sp), err != null ? err : "coord_ok",
+                    "coord_short".equals(err) ? new Object[]{TunnelCartConfig.brake(), TunnelCartConfig.brake() + 1, TunnelCartConfig.brake() + PathPlan.AFTER_CLIMB} : new Object[0]);
     }
 
     // ------------------------------------------------------------ GUI
@@ -140,14 +141,19 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     // ------------------------------------------------------------ main loop
     @Override
     public void tick() {
+        Vec3d before = getPos();
+        boolean hold = false;       // stalled: stay where we are (no rolling back down a slope)
         if (!getWorld().isClient && getWorld() instanceof ServerWorld sw) {
             if (plan == null || !running) {
                 setVelocity(0, getVelocity().y, 0);
+                hold = plan != null;
             } else {
                 issue = null;
                 issueArgs = new Object[0];
                 pool = poolNow();
-                double max = getMaxSpeed(); // includes High-Speed Rail override
+                double cfgSpeed = TunnelCartConfig.buildSpeed();
+                if (plan.brake() != TunnelCartConfig.brakeFor(cfgSpeed)) plan.setBrake(TunnelCartConfig.brakeFor(cfgSpeed));
+                double max = Math.min(getMaxSpeed(), cfgSpeed / 20.0); // High-Speed Rail limit, and the slider of the mod menu
                 Direction h0 = plan.heading();
                 BlockPos o = plan.origin();
                 double along0 = (getX() - o.getX() - 0.5) * h0.getOffsetX() + (getZ() - o.getZ() - 0.5) * h0.getOffsetZ();
@@ -171,7 +177,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                     if (plan.node(j).slope != PathPlan.Slope.FLAT) { max = Math.min(max, SLOPE_SPEED); break; }
                 }
                 // through the turn (and its slowing zones) never faster than a curved rail can take, whatever the power / HSR says
-                if (plan.hasTurn() && lastProg >= plan.turnIndex() - PathPlan.BRAKE && lastProg <= plan.turnIndex() + PathPlan.BRAKE)
+                if (plan.hasTurn() && lastProg >= plan.turnIndex() - plan.brake() && lastProg <= plan.turnIndex() + plan.brake())
                     max = Math.min(max, TURN_SPEED);
                 int target = (int) Math.floor(prog) + Math.max(6, perTick * 3 + 3);
                 if (plan.hasTarget()) target = Math.min(target, plan.total());
@@ -189,6 +195,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                     alert(sw, sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500), "done", new Object[0]);
                 }
                 setVelocity(dir.getOffsetX() * speed, getVelocity().y, dir.getOffsetZ() * speed);
+                hold = speed <= 1e-9;
 
                 if (age % 20 == 0) flushJunk(sw);
                 if (issue != null && speed < 0.05) {
@@ -198,14 +205,16 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                         alertAge = age;
                         alert(sw, sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500), issue, issueArgs);
                     }
-                } else if (issue == null && alertKey != null) {
+                } else if (issue == null && alertKey != null) {          // the problem is gone: take the text off the screen
                     alertKey = null;
-                    for (var p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500))
-                        p.networkHandler.sendPacket(new ClearTitleS2CPacket(true));
+                    for (var p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500)) p.networkHandler.sendPacket(new ClearTitleS2CPacket(true));
                 }
             }
         }
         super.tick();
+        if (hold && !getWorld().isClient && getWorld().getBlockState(BlockPos.ofFloored(before)).isIn(net.minecraft.registry.tag.BlockTags.RAILS)) {
+            setPosition(before); setVelocity(0, 0, 0);
+        }
     }
 
     // ------------------------------------------------------------ alerts
@@ -533,7 +542,8 @@ public class TunnelCartEntity extends ChestMinecartEntity {
             if (d == null) d = Direction.NORTH;
             tx = nbt.getInt("TX"); ty = nbt.getInt("TY"); tz = nbt.getInt("TZ");
             try {
-                plan = nbt.getBoolean("HasT") ? PathPlan.toTarget(o, d, tx, ty, tz) : PathPlan.straight(o, d);
+                plan = nbt.getBoolean("HasT") ? PathPlan.toTarget(o, d, tx, ty, tz, 1) : PathPlan.straight(o, d);
+                plan.setBrake(TunnelCartConfig.brake());
             } catch (IllegalArgumentException ex) {
                 plan = PathPlan.straight(o, d);
             }

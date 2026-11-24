@@ -6,8 +6,15 @@
   "description": "Self-driving minecart that digs a 3x3 tunnel, lays powered rails and lines it with cobbled deepslate.",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.example.tunnelcart.TunnelCartMod"],
-    "client": ["com.example.tunnelcart.client.TunnelCartClient"]
+    "main": [
+      "com.example.tunnelcart.TunnelCartMod"
+    ],
+    "client": [
+      "com.example.tunnelcart.client.TunnelCartClient"
+    ],
+    "modmenu": [
+      "com.example.tunnelcart.client.TunnelCartModMenu"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.14.0",
@@ -15,5 +22,9 @@
     "minecraft": "1.20.1",
     "java": ">=17"
   },
-  "suggests": { "highspeed-rail": "*" }
+  "suggests": {
+    "highspeed-rail": "*",
+    "modmenu": "*"
+  },
+  "icon": "assets/tunnelcart/icon.png"
 }
