@@ -33,17 +33,16 @@ public class ConfigScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(ScreenTexts.DONE, b -> close()).dimensions(width / 2 - 100, top() + 134, 200, 20).build());
     }
 
-    private static int hsrTarget(double bps) { return Math.max(1, (int) Math.round(bps)); }
 
     @Override
     public void close() {
         TunnelCartConfig.set(tunnel, vanilla);
         TunnelCartConfig.save();
-        // the same speed goes into the config of High-Speed Rail (blocks that are at the top speed there)
+        // the fast blocks of the list (HsrConfig.BLOCKS) go into the config of High-Speed Rail, added if missing
         if (HsrConfig.present()) {
             boolean restart = false;
             try {
-                if (HsrConfig.setFastSpeed(hsrTarget(TunnelCartConfig.buildSpeed()))) restart = !HsrConfig.reload();
+                if (HsrConfig.setSpeed(TunnelCartConfig.hsrSpeed())) restart = !HsrConfig.reload();
             } catch (Exception e) {
                 restart = true;
             }
@@ -68,9 +67,10 @@ public class ConfigScreen extends Screen {
         }
         if (HsrConfig.present()) {
             int now = HsrConfig.fastSpeed();
-            if (now != hsrTarget(tunnel)) {
+            int target = Math.max(1, (int) Math.round(Math.max(tunnel, vanilla)));
+            if (now != target) {
                 ctx.drawCenteredTextWithShadow(textRenderer,
-                        Text.translatable("tunnelcart.cfg.hsr_warn", now, hsrTarget(tunnel)).formatted(Formatting.GOLD), cx, y, 0xFFAA00);
+                        Text.translatable("tunnelcart.cfg.hsr_warn", now, target).formatted(Formatting.GOLD), cx, y, 0xFFAA00);
             } else {
                 ctx.drawCenteredTextWithShadow(textRenderer,
                         Text.translatable("tunnelcart.cfg.hsr", now).formatted(Formatting.GRAY), cx, y, 0xAAAAAA);

@@ -79,6 +79,7 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     public Direction getHeading() { return plan != null ? plan.heading() : Direction.NORTH; }
     public boolean isRunning() { return running; }
     public void toggleRunning() { running = !running; }
+    public void stopRunning() { running = false; }
     public boolean isTorches() { return torches; }
     public void toggleTorches() { torches = !torches; }
     public UUID getExtUuid() { return extUuid; }
@@ -183,7 +184,9 @@ public class TunnelCartEntity extends ChestMinecartEntity {
                 if (plan.hasTarget()) target = Math.min(target, plan.total());
                 int budget = perTick + 3;
                 while (built < target && budget-- > 0) {
+                    int detoursBefore = plan.detours().size();
                     if (!ensureDetour(sw, built + 1)) break;
+                    if (plan.detours().size() > detoursBefore) announceDetour(sw, plan.detours().get(plan.detours().size() - 1));
                     if (!buildNode(sw, built + 1)) break;
                     built++;
                 }
@@ -243,6 +246,12 @@ public class TunnelCartEntity extends ChestMinecartEntity {
     }
 
     // ------------------------------------------------------------ detours around existing tracks
+    /** Tells the players why the cart suddenly slows down and goes up / down: an old track is in the way. */
+    private void announceDetour(ServerWorld sw, PathPlan.Detour d) {
+        Text msg = Text.translatable(d.sigma > 0 ? "tunnelcart.detour_over" : "tunnelcart.detour_under", plan.brake()).formatted(Formatting.GOLD);
+        for (ServerPlayerEntity p : sw.getPlayers(pl -> pl.squaredDistanceTo(this) < 2500)) p.sendMessage(msg, false);
+    }
+
     /** false = node n must not be built now (issue is set): waiting for chunks, or no way around an old track. */
     private boolean ensureDetour(ServerWorld w, int n) {
         DetourPlanner.Result r = planner.ensure(plan, terrain(w), n);

@@ -42,15 +42,18 @@
  "tunnelcart.alert.coord_short": "Слишком близко: тормозные зоны по %s блоков. Повороты — от %s, подъём/спуск — высота+%s",
  "tunnelcart.alert.coord_busy": "Дождись прохода поворота или поставь заново",
  "tunnelcart.cfg.title": "Tunnel Cart — настройки",
- "tunnelcart.cfg.tunnel": "Скорость проходчика / High-Speed Rail",
- "tunnelcart.cfg.vanilla": "Скорость обычных вагонеток (макс.)",
+ "tunnelcart.cfg.tunnel": "Скорость проходчика",
+ "tunnelcart.cfg.vanilla": "Скорость обычных вагонеток",
  "tunnelcart.cfg.brake": "Тормозные зоны: %s блоков",
  "tunnelcart.cfg.warn": "Не рекомендуется выше %s б/с!",
- "tunnelcart.cfg.vanilla_hint": "300 = без ограничения. Это потолок поверх High-Speed Rail.",
- "tunnelcart.cfg.hsr": "High-Speed Rail: быстрые блоки сейчас на %s б/с",
+ "tunnelcart.cfg.vanilla_hint": "Реальная скорость на блоках High-Speed Rail (300 = максимум). Повороты: 8 б/с.",
+ "tunnelcart.cfg.hsr": "High-Speed Rail: блоки сейчас на %s б/с",
  "tunnelcart.cfg.hsr_warn": "High-Speed Rail: %s → %s б/с. Применится по «Готово»; если не изменится — перезапусти игру",
  "tunnelcart.cfg.hsr_missing": "High-Speed Rail не найден — скорость ограничивается только модом",
  "tunnelcart.restart.title": "Нужен перезапуск игры",
  "tunnelcart.restart.line1": "Скорость в конфиге High-Speed Rail записана, но на лету не применилась.",
- "tunnelcart.restart.line2": "Перезапусти Minecraft, чтобы она вступила в силу."
+ "tunnelcart.restart.line2": "Перезапусти Minecraft, чтобы она вступила в силу.",
+ "tunnelcart.stopped_by_shift": "Проходчик: остановлен (ты встал с сиденья)",
+ "tunnelcart.detour_over": "Проходчик: впереди старый путь — иду НАД ним. Булыжник перед подъёмом (%s блоков) — это тормозные блоки, так и должно быть.",
+ "tunnelcart.detour_under": "Проходчик: впереди старый путь — иду ПОД ним. Булыжник перед спуском (%s блоков) — это тормозные блоки, так и должно быть."
 }

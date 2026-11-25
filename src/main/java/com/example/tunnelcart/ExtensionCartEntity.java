@@ -2,6 +2,7 @@ package com.example.tunnelcart;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -10,7 +11,9 @@ import net.minecraft.item.Item;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.ScreenHandler;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
@@ -55,6 +58,17 @@ public class ExtensionCartEntity extends ChestMinecartEntity {
         }
         if (!w.isClient) player.startRiding(this);
         return ActionResult.success(w.isClient);
+    }
+
+    /** Shift (getting out of the seat) stops the tunnel cart. */
+    @Override
+    protected void removePassenger(Entity passenger) {
+        super.removePassenger(passenger);
+        if (passenger instanceof PlayerEntity && getWorld() instanceof ServerWorld sw && leader != null
+                && sw.getEntity(leader) instanceof TunnelCartEntity t && t.isRunning()) {
+            t.stopRunning();
+            if (passenger instanceof ServerPlayerEntity sp) sp.sendMessage(Text.translatable("tunnelcart.stopped_by_shift"), false);
+        }
     }
 
     public Item getItem() { return TunnelCartMod.EXTENSION_CART_ITEM; }

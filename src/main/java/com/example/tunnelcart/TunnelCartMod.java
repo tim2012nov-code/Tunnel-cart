@@ -1,11 +1,19 @@
 package com.example.tunnelcart;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.RailBlock;
+import net.minecraft.block.enums.RailShape;
 import net.minecraft.entity.Entity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.AbstractMinecartEntity;
 import net.minecraft.util.math.Vec3d;
@@ -40,18 +48,45 @@ public class TunnelCartMod implements ModInitializer {
             Registries.SCREEN_HANDLER, new Identifier(ID, "tunnel"),
             new ExtendedScreenHandlerType<>(TunnelScreenHandler::new));
 
+    /** 8 blocks/s: what a curved rail can take. */
+    private static final double CURVE_SPEED = 0.4;
+
+    /** A plain rail in a curved shape on the cart's block or in any block it will pass this tick (rails of slopes are checked one level up / down too). */
+    private static boolean curveAhead(ServerWorld w, AbstractMinecartEntity m, Vec3d v, double h) {
+        int steps = (int) Math.ceil(h) + 1;
+        double dx = v.x / h, dz = v.z / h;
+        BlockPos.Mutable p = new BlockPos.Mutable();
+        int by = m.getBlockY();
+        for (int i = 0; i <= steps; i++) {
+            int bx = MathHelper.floor(m.getX() + dx * i), bz = MathHelper.floor(m.getZ() + dz * i);
+            if (!w.isChunkLoaded(p.set(bx, by, bz))) return false;
+            for (int dy = -1; dy <= 1; dy++) {
+                BlockState s = w.getBlockState(p.set(bx, by + dy, bz));
+                if (!s.isOf(Blocks.RAIL)) continue;
+                RailShape sh = s.get(RailBlock.SHAPE);
+                if (sh == RailShape.NORTH_EAST || sh == RailShape.NORTH_WEST || sh == RailShape.SOUTH_EAST || sh == RailShape.SOUTH_WEST) return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public void onInitialize() {
         TunnelCartConfig.load();
-        // speed limit for ordinary minecarts (slider in the Mod Menu screen; 300 = off). Works as a cap on top of High-Speed Rail.
+        // High-Speed Rail file: make sure every fast block of the list is there with the configured speed
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> HsrConfig.syncAtStart());
+        // ordinary minecarts: the slider is their real speed on High-Speed Rail blocks (300 = no limit),
+        // and curves stay at the vanilla 8 b/s
         ServerTickEvents.END_WORLD_TICK.register(world -> {
-            if (!TunnelCartConfig.vanillaLimited()) return;
-            double cap = TunnelCartConfig.vanillaSpeed() / 20.0;
+            double cap = TunnelCartConfig.vanillaLimited() ? TunnelCartConfig.vanillaSpeed() / 20.0 : Double.MAX_VALUE;
             for (Entity e : world.iterateEntities()) {
                 if (!(e instanceof AbstractMinecartEntity m) || e instanceof TunnelCartEntity || e instanceof ExtensionCartEntity) continue;
                 Vec3d v = m.getVelocity();
                 double h = Math.hypot(v.x, v.z);
-                if (h > cap) m.setVelocity(v.x * cap / h, v.y, v.z * cap / h);
+                if (h <= CURVE_SPEED) continue;
+                double c = cap;
+                if (curveAhead(world, m, v, h)) c = Math.min(c, CURVE_SPEED);
+                if (h > c) m.setVelocity(v.x * c / h, v.y, v.z * c / h);
             }
         });
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(e -> { e.add(TUNNEL_CART_ITEM); e.add(EXTENSION_CART_ITEM); });

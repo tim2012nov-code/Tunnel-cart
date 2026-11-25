@@ -70,6 +70,7 @@ public class TunnelScreenHandler extends ScreenHandler {
         return ret;
     }
 
-    @Override public boolean canUse(PlayerEntity p) { return inv.canPlayerUse(p); }
+    /** At high speed the client and the server see the cart in different places, so the vanilla 8-block check closed the menu. */
+    @Override public boolean canUse(PlayerEntity p) { return cart == null || (cart.isAlive() && cart.squaredDistanceTo(p) < 1024); }
     @Override public void onClosed(PlayerEntity p) { super.onClosed(p); inv.onClose(p); }
 }

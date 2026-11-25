@@ -42,15 +42,18 @@
  "tunnelcart.alert.coord_short": "Too close: slowing zones are %s blocks. Turn legs from %s, climb/descent height+%s",
  "tunnelcart.alert.coord_busy": "Wait for the turn to pass or place the cart again",
  "tunnelcart.cfg.title": "Tunnel Cart settings",
- "tunnelcart.cfg.tunnel": "Tunnel cart / High-Speed Rail speed",
- "tunnelcart.cfg.vanilla": "Ordinary minecart speed (max)",
+ "tunnelcart.cfg.tunnel": "Tunnel cart speed",
+ "tunnelcart.cfg.vanilla": "Ordinary minecart speed",
  "tunnelcart.cfg.brake": "Slowing zones: %s blocks",
  "tunnelcart.cfg.warn": "Not recommended above %s b/s!",
- "tunnelcart.cfg.vanilla_hint": "300 = no limit. A cap on top of High-Speed Rail.",
- "tunnelcart.cfg.hsr": "High-Speed Rail: fast blocks are at %s b/s now",
+ "tunnelcart.cfg.vanilla_hint": "Real speed on High-Speed Rail blocks (300 = max). Curves stay at 8 b/s.",
+ "tunnelcart.cfg.hsr": "High-Speed Rail: the blocks are at %s b/s now",
  "tunnelcart.cfg.hsr_warn": "High-Speed Rail: %s -> %s b/s. Applied on Done; if it does not change, restart the game",
  "tunnelcart.cfg.hsr_missing": "High-Speed Rail not found - speed is limited by this mod only",
  "tunnelcart.restart.title": "Restart the game",
  "tunnelcart.restart.line1": "The High-Speed Rail config was written but could not be applied live.",
- "tunnelcart.restart.line2": "Restart Minecraft for it to take effect."
+ "tunnelcart.restart.line2": "Restart Minecraft for it to take effect.",
+ "tunnelcart.stopped_by_shift": "Tunnel Cart: stopped (you left the seat)",
+ "tunnelcart.detour_over": "Tunnel Cart: an old track is ahead - going OVER it. The cobblestone blocks before the ramp (%s) are slowing blocks, this is normal.",
+ "tunnelcart.detour_under": "Tunnel Cart: an old track is ahead - going UNDER it. The cobblestone blocks before the ramp (%s) are slowing blocks, this is normal."
 }

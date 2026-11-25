@@ -22,6 +22,8 @@ public final class TunnelCartConfig {
     public static double buildSpeed() { return buildSpeed; }
     public static double vanillaSpeed() { return vanillaSpeed; }
     public static boolean vanillaLimited() { return vanillaSpeed < MAX_SPEED - 1e-9; }
+    /** What goes into the High-Speed Rail file: the block must allow the faster of the two kinds of cart; each kind is capped separately by this mod. */
+    public static int hsrSpeed() { return Math.max(1, (int) Math.round(Math.max(buildSpeed, vanillaSpeed))); }
 
     public static void set(double build, double vanilla) {
         buildSpeed = clamp(build);
